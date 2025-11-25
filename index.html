@@ -44,6 +44,7 @@
       font-size: 13px;
       border-radius: 8px;
       align-items: center;
+      z-index: 5;
     }
     .hud-chip {
       display: inline-flex;
@@ -54,9 +55,7 @@
       gap: 4px;
       white-space: nowrap;
     }
-    .hud-label {
-      font-weight: 600;
-    }
+    .hud-label { font-weight: 600; }
     #pause-btn {
       margin-left: auto;
       padding: 4px 10px;
@@ -67,9 +66,7 @@
       cursor: pointer;
       font-size: 12px;
     }
-    #pause-btn:hover {
-      background: #c55d00;
-    }
+    #pause-btn:hover { background: #c55d00; }
 
     .overlay {
       position: absolute;
@@ -79,9 +76,11 @@
       align-items: center;
       justify-content: center;
       z-index: 10;
+      pointer-events: none;
     }
     .overlay.visible {
       display: flex;
+      pointer-events: auto;
     }
     .panel {
       background: #ffffff;
@@ -134,28 +133,12 @@
       background: #ff7a00;
       color: #fff;
     }
-    .btn-primary:hover {
-      background: #c55d00;
-    }
+    .btn-primary:hover { background: #c55d00; }
     .btn-ghost {
       background: #f3f3f3;
       color: #333;
     }
-    .btn-ghost:hover {
-      background: #e0e0e0;
-    }
-
-    #splash-options button {
-      width: 100%;
-      margin-top: 8px;
-    }
-
-    #pause-panel label {
-      font-size: 13px;
-    }
-    #pause-panel input[type="range"] {
-      width: 100%;
-    }
+    .btn-ghost:hover { background: #e0e0e0; }
 
     #warning-text {
       color: #d32f2f;
@@ -163,11 +146,66 @@
       margin-top: 8px;
       font-size: 13px;
     }
+
+    /* Splash */
+    #splash-options button {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    /* Persona selection visual cards */
+    .persona-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .persona-card {
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff7f0;
+      border: 2px solid transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .persona-card span.emoji {
+      font-size: 32px;
+    }
+    .persona-card h3 {
+      font-size: 14px;
+      margin-bottom: 0;
+    }
+    .persona-card p {
+      font-size: 11px;
+      text-align: center;
+      margin-bottom: 0;
+    }
+    .persona-card.selected {
+      border-color: #ff7a00;
+      box-shadow: 0 0 0 2px rgba(255,122,0,0.2);
+    }
+    .persona-hint {
+      font-size: 12px;
+      margin-top: 6px;
+      color: #777;
+    }
+
+    .overlay-fullscreen-label {
+      font-size: 12px;
+      margin-top: 8px;
+      color: #666;
+    }
   </style>
 </head>
 <body>
   <div id="game-container">
     <canvas id="game" width="960" height="540"></canvas>
+
+    <!-- HTML5 BGM -->
+    <audio id="bgm" src="audio/bgm.mp3" loop></audio>
+
     <div id="hud">
       <div class="hud-chip"><span class="hud-label">Wallet:</span> <span id="hud-wallet">₹0</span></div>
       <div class="hud-chip"><span class="hud-label">Coins:</span> <span id="hud-coins">0</span></div>
@@ -181,16 +219,17 @@
       <button id="pause-btn">Pause</button>
     </div>
 
-    <!-- Splash / Login / Admin -->
+    <!-- Splash / Home -->
     <div class="overlay" id="splash-overlay">
       <div class="panel">
         <h1>Health Hero Rush 🦸‍♀️🇮🇳</h1>
-        <p>Run, jump and enroll into your health insurance without the snooze-fest.</p>
+        <p>Run, jump and enroll into health insurance like a total legend.</p>
         <div id="splash-options">
-          <button class="btn btn-primary" id="btn-new-game">New Game</button>
+          <button class="btn btn-primary" id="btn-new-game">New Game (Enter)</button>
           <button class="btn btn-ghost" id="btn-continue">Continue with mobile number</button>
           <button class="btn btn-ghost" id="btn-admin">Admin / HR Console</button>
         </div>
+        <p class="overlay-fullscreen-label">Controls: Arrow keys to move / jump, Enter to interact, Esc to pause.</p>
       </div>
     </div>
 
@@ -209,34 +248,88 @@
       </div>
     </div>
 
-    <!-- Persona selection -->
+    <!-- Persona selection (visual, keyboard) -->
     <div class="overlay" id="persona-overlay">
       <div class="panel">
         <h2>Choose your Hero Persona</h2>
-        <p>Don’t worry, even if you pick “boring adult”, you still get superpowers.</p>
-        <label>Age band</label>
-        <select id="persona-age">
-          <option value="18-25">18–25</option>
-          <option value="26-35">26–35</option>
-          <option value="36-45">36–45</option>
-          <option value="45+">45+</option>
-        </select>
-        <label>Family status</label>
-        <select id="persona-family">
-          <option value="single">Single</option>
-          <option value="married">Married</option>
-          <option value="married_parents">Married + Parents</option>
-          <option value="married_parents_kids">Married + Parents + Kids</option>
-        </select>
-        <label>Avatar style</label>
-        <select id="persona-avatar">
-          <option value="metro_maverick">Metro Maverick</option>
-          <option value="doc_defender">Doc Defender</option>
-          <option value="namma_shield">Namma Shield</option>
-          <option value="tech_tiger">Tech Tiger</option>
-        </select>
+        <p>Use ← → to move, Enter to select. Pick your vibe.</p>
+
+        <h3>Age Band</h3>
+        <div class="persona-grid" id="age-grid">
+          <div class="persona-card" data-age="18-25">
+            <span class="emoji">🛵</span>
+            <h3>18–25</h3>
+            <p>First job, first paycheck, first HR form.</p>
+          </div>
+          <div class="persona-card" data-age="26-35">
+            <span class="emoji">💼</span>
+            <h3>26–35</h3>
+            <p>Career mode: on. Maybe planning a family.</p>
+          </div>
+          <div class="persona-card" data-age="36-45">
+            <span class="emoji">🧠</span>
+            <h3>36–45</h3>
+            <p>Strategic adulting, max cover focus.</p>
+          </div>
+          <div class="persona-card" data-age="45+">
+            <span class="emoji">🧘‍♂️</span>
+            <h3>45+</h3>
+            <p>Zen + wise, wants absolute peace of mind.</p>
+          </div>
+        </div>
+
+        <h3 style="margin-top:14px;">Family Status</h3>
+        <div class="persona-grid" id="family-grid">
+          <div class="persona-card" data-family="single">
+            <span class="emoji">🧍</span>
+            <h3>Single</h3>
+            <p>Just you and your snacks.</p>
+          </div>
+          <div class="persona-card" data-family="married">
+            <span class="emoji">💑</span>
+            <h3>Married</h3>
+            <p>Two heroes, one policy.</p>
+          </div>
+          <div class="persona-card" data-family="married_parents">
+            <span class="emoji">👨‍👩‍👧</span>
+            <h3>Married + Parents</h3>
+            <p>Parivaar in full force.</p>
+          </div>
+          <div class="persona-card" data-family="married_parents_kids">
+            <span class="emoji">👨‍👩‍👧‍👦</span>
+            <h3>Married + Parents + Kids</h3>
+            <p>Full Indian multiverse.</p>
+          </div>
+        </div>
+
+        <h3 style="margin-top:14px;">Avatar</h3>
+        <div class="persona-grid" id="avatar-grid">
+          <div class="persona-card" data-avatar="metro_maverick">
+            <span class="emoji">🦸‍♂️</span>
+            <h3>Metro Maverick</h3>
+            <p>Hoodie, headphones, local train warrior.</p>
+          </div>
+          <div class="persona-card" data-avatar="doc_defender">
+            <span class="emoji">🩺</span>
+            <h3>Doc Defender</h3>
+            <p>Cape meets lab coat.</p>
+          </div>
+          <div class="persona-card" data-avatar="namma_shield">
+            <span class="emoji">🛡️</span>
+            <h3>Namma Shield</h3>
+            <p>Lungi + super shield swag.</p>
+          </div>
+          <div class="persona-card" data-avatar="tech_tiger">
+            <span class="emoji">🐯</span>
+            <h3>Tech Tiger</h3>
+            <p>Glowing circuits, chai on the side.</p>
+          </div>
+        </div>
+
+        <p class="persona-hint">Tip: Use ← → to cycle within each row, ↑ ↓ to move between age / family / avatar.</p>
+
         <div class="btn-row">
-          <button class="btn btn-primary" id="persona-start">Start Wallet Run</button>
+          <button class="btn btn-primary" id="persona-start">Start Wallet Run (Enter)</button>
         </div>
       </div>
     </div>
@@ -251,6 +344,7 @@
         <p><strong>Remaining wallet:</strong> <span id="plan-modal-remaining"></span></p>
         <p><strong>Out-of-pocket:</strong> <span id="plan-modal-outofpocket"></span></p>
         <p id="plan-modal-sponsored" style="font-size:13px;color:#1ba672;font-weight:600;display:none;">Company-sponsored recommended plan ✅</p>
+        <p style="font-size:12px;color:#777;margin-top:8px;">Press Enter to select this plan, or Esc to close.</p>
         <div class="btn-row">
           <button class="btn btn-ghost" id="plan-modal-close">Keep exploring</button>
           <button class="btn btn-primary" id="plan-modal-select">Select this plan</button>
@@ -322,7 +416,7 @@
       <div class="panel" id="pause-panel">
         <h2>Paused ⏸</h2>
         <label>Music volume</label>
-        <input type="range" id="music-volume" min="0" max="1" step="0.05" value="0.4" />
+        <input type="range" id="music-volume" min="0" max="1" step="0.05" value="0.7" />
         <label>SFX volume</label>
         <input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="0.7" />
         <label>
@@ -335,12 +429,12 @@
       </div>
     </div>
 
-    <!-- Admin console (simple) -->
+    <!-- Admin console (placeholder) -->
     <div class="overlay" id="admin-overlay">
       <div class="panel" style="width:600px;">
         <h2>Admin / HR Console (demo)</h2>
-        <p>For now, tweak config directly in the code (PLANS, ADDONS, WALLET_SETTINGS). This panel is a visual placeholder.</p>
-        <p>Future: editable forms for plans, add-ons, persona presets, wallet rules.</p>
+        <p>Config is currently editable via JavaScript constants (PLANS, ADDONS, WALLET_SETTINGS).</p>
+        <p>Next iteration: full editable UI with saveable JSON.</p>
         <div class="btn-row">
           <button class="btn btn-primary" id="admin-close">Back</button>
         </div>
@@ -360,9 +454,9 @@
   </div>
 
   <script>
-    // -----------------------------
+    // ------------------------------------
     // CONFIG / DATA
-    // -----------------------------
+    // ------------------------------------
     const PLANS = [
       {
         id: "PLAN_COMP",
@@ -399,54 +493,12 @@
     ];
 
     const ADDONS = [
-      {
-        id: "ADDON_FITNESS",
-        name: "Fitness Subscription",
-        type: "fitness",
-        price: 400,
-        desc: "Gym / yoga credits to keep you in superhero shape.",
-        requiredPlanIds: []
-      },
-      {
-        id: "ADDON_DENTAL",
-        name: "Dental Cover",
-        type: "dental",
-        price: 300,
-        desc: "Covers basic dental procedures & clean-ups.",
-        requiredPlanIds: ["PLAN_COMP","PLAN_PREMIUM"]
-      },
-      {
-        id: "ADDON_OPD",
-        name: "OPD Cover",
-        type: "opd",
-        price: 500,
-        desc: "Covers OPD doctor visits up to a limit.",
-        requiredPlanIds: ["PLAN_COMP", "PLAN_VALUE", "PLAN_PREMIUM"]
-      },
-      {
-        id: "ADDON_CHECKUPS",
-        name: "Annual Health Check-ups",
-        type: "checkup",
-        price: 350,
-        desc: "Yearly full-body checkup. Very adult, very responsible.",
-        requiredPlanIds: []
-      },
-      {
-        id: "ADDON_MATERNITY",
-        name: "Maternity Plan",
-        type: "maternity",
-        price: 650,
-        desc: "Covers maternity-related hospitalization.",
-        requiredPlanIds: ["PLAN_COMP","PLAN_PREMIUM"]
-      },
-      {
-        id: "ADDON_SPECIAL",
-        name: "Speciality Add-on",
-        type: "specialty",
-        price: 420,
-        desc: "Extra cover for speciality treatments.",
-        requiredPlanIds: ["PLAN_PREMIUM"]
-      }
+      { id: "ADDON_FITNESS", name: "Fitness Subscription", type: "fitness", price: 400, desc: "Gym / yoga credits to keep you in superhero shape.", requiredPlanIds: [] },
+      { id: "ADDON_DENTAL",  name: "Dental Cover",        type: "dental",  price: 300, desc: "Covers basic dental procedures & clean-ups.", requiredPlanIds: ["PLAN_COMP","PLAN_PREMIUM"] },
+      { id: "ADDON_OPD",     name: "OPD Cover",           type: "opd",     price: 500, desc: "Covers OPD doctor visits up to a limit.",      requiredPlanIds: ["PLAN_COMP", "PLAN_VALUE", "PLAN_PREMIUM"] },
+      { id: "ADDON_CHECKUPS",name: "Annual Health Check-ups", type: "checkup", price: 350, desc: "Yearly full-body checkup. Very adult, very responsible.", requiredPlanIds: [] },
+      { id: "ADDON_MATERNITY",name: "Maternity Plan",     type: "maternity", price: 650, desc: "Covers maternity-related hospitalization.", requiredPlanIds: ["PLAN_COMP","PLAN_PREMIUM"] },
+      { id: "ADDON_SPECIAL", name: "Speciality Add-on",   type: "specialty", price: 420, desc: "Extra cover for speciality treatments.",      requiredPlanIds: ["PLAN_PREMIUM"] }
     ];
 
     const WALLET_SETTINGS = {
@@ -459,80 +511,42 @@
 
     const STORAGE_KEY = "health_hero_enrollment";
 
-    // -----------------------------
-    // SIMPLE AUDIO USING WEB AUDIO
-    // (very light chiptune style)
-    // -----------------------------
-    const AudioSystem = (() => {
+    // ------------------------------------
+    // AUDIO: HTML5 BGM + simple SFX
+    // ------------------------------------
+    const bgm = document.getElementById("bgm");
+    bgm.volume = 0.7;
+
+    let sfxVolume = 0.7;
+    let muted = false;
+
+    function playBGM() {
+      if (muted) return;
+      bgm.play().catch(() => {});
+    }
+    function stopBGM() {
+      bgm.pause();
+      bgm.currentTime = 0;
+    }
+    function playSFXBeep(pitch = 880, duration = 0.1) {
+      if (muted || sfxVolume <= 0) return;
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      let musicGain = ctx.createGain();
-      let sfxGain = ctx.createGain();
-      let masterGain = ctx.createGain();
-      musicGain.connect(masterGain);
-      sfxGain.connect(masterGain);
-      masterGain.connect(ctx.destination);
-      musicGain.gain.value = 0.4;
-      sfxGain.gain.value = 0.7;
-      masterGain.gain.value = 1;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.value = pitch;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(sfxVolume, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+      osc.start(now);
+      osc.stop(now + duration);
+    }
 
-      let currentMusicOsc = null;
-      function playBGM(theme="theme1") {
-        stopBGM();
-        // simple sawtooth drone + melody-ish beep
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "square";
-        osc.connect(gain);
-        gain.connect(musicGain);
-        gain.gain.value = 0.12;
-
-        const now = ctx.currentTime;
-        osc.frequency.setValueAtTime(220, now);
-        // pseudo melody using automation
-        osc.frequency.linearRampToValueAtTime(330, now + 0.5);
-        osc.frequency.linearRampToValueAtTime(440, now + 1.0);
-        osc.frequency.linearRampToValueAtTime(262, now + 1.5);
-        osc.frequency.linearRampToValueAtTime(330, now + 2.0);
-        osc.frequency.linearRampToValueAtTime(220, now + 2.5);
-
-        osc.start();
-        currentMusicOsc = osc;
-      }
-      function stopBGM() {
-        if (currentMusicOsc) {
-          currentMusicOsc.stop();
-          currentMusicOsc.disconnect();
-          currentMusicOsc = null;
-        }
-      }
-      function playSFX(freq=440, duration=0.1) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "square";
-        osc.frequency.value = freq;
-        osc.connect(gain);
-        gain.connect(sfxGain);
-        const now = ctx.currentTime;
-        gain.gain.setValueAtTime(0.5, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        osc.start(now);
-        osc.stop(now + duration);
-      }
-      function setMusicVolume(v) {
-        musicGain.gain.value = v;
-      }
-      function setSFXVolume(v) {
-        sfxGain.gain.value = v;
-      }
-      function muteAll(m) {
-        masterGain.gain.value = m ? 0 : 1;
-      }
-      return { playBGM, stopBGM, playSFX, setMusicVolume, setSFXVolume, muteAll };
-    })();
-
-    // -----------------------------
+    // ------------------------------------
     // GAME STATE
-    // -----------------------------
+    // ------------------------------------
     const Screen = {
       SPLASH: "SPLASH",
       PERSONA: "PERSONA",
@@ -567,18 +581,10 @@
         outOfPocketCost: 0,
         progressStage: 0
       },
-      angel: {
-        active: false,
-        x: 0,
-        y: 0
-      },
-      playerProfileId: null,
+      angel: { active: false, x: 0, y: 0 },
       mobileNumber: null
     };
 
-    // -----------------------------
-    // CANVAS SETUP
-    // -----------------------------
     const canvas = document.getElementById("game");
     const ctx2d = canvas.getContext("2d");
 
@@ -600,34 +606,25 @@
     const celebrationOverlay = document.getElementById("celebration-overlay");
     const authOverlay = document.getElementById("auth-overlay");
 
-    // -----------------------------
-    // LEVEL / WORLD SIMPLE GEOMETRY
-    // -----------------------------
-    const GRAVITY = 0.5;
-    const MOVE_SPEED = 3;
-    const JUMP_SPEED = -10;
+    const GRAVITY = 0.6;
+    const MOVE_SPEED = 3.5;
+    const JUMP_SPEED = -11;
 
-    const player = {
-      x: 100, y: 0,
-      w: 32, h: 40,
-      vx: 0, vy: 0,
-      onGround: false,
-      facing: 1
-    };
-
-    const keys = { left:false, right:false, up:false };
+    const player = { x: 100, y: 0, w: 32, h: 40, vx: 0, vy: 0, onGround: false };
+    const keys = { left: false, right: false, up: false };
     let lastTime = performance.now();
     let paused = false;
     let waitingForFlagRun = false;
     let levelTimer = 0;
+    let coyoteTime = 0;
+    const COYOTE_MS = 80;
 
-    // Basic level definitions: platforms, coins, plan platforms, etc
     const levelData = {
       WALLET_RUN: {
-        ground: [{x:0,y:480,w:2000,h:60}],
+        ground: [{ x:0,y:480,w:2000,h:60 }],
         coins: [
-          {x: 200, y: 380}, {x:240,y:350},{x:280,y:320},
-          {x:450,y:380},{x:490,y:350},{x:530,y:320}
+          {x: 200, y:380},{x:240,y:350},{x:280,y:320},
+          {x: 450,y:380},{x:490,y:350},{x:530,y:320}
         ],
         enemies: [],
         exitX: 900
@@ -641,10 +638,10 @@
           {x:600,y:360,w:100,h:20}
         ],
         planPlatforms: [
-          {x:150,y:420,w:160,h:30, planId:"PLAN_COMP"},
-          {x:360,y:420,w:160,h:30, planId:"PLAN_VALUE"},
-          {x:570,y:420,w:160,h:30, planId:"PLAN_PREMIUM"},
-          {x:780,y:420,w:160,h:30, planId:"PLAN_SINGLE"}
+          {x:150,y:420,w:160,h:30,planId:"PLAN_COMP"},
+          {x:360,y:420,w:160,h:30,planId:"PLAN_VALUE"},
+          {x:570,y:420,w:160,h:30,planId:"PLAN_PREMIUM"},
+          {x:780,y:420,w:160,h:30,planId:"PLAN_SINGLE"}
         ],
         enemies: [
           {x:350,y:448,w:32,h:32,dx:1}
@@ -654,7 +651,7 @@
       },
       LEVEL2_DEPS: {
         ground: [{x:0,y:480,w:2000,h:60}],
-        slots: [], // filled at runtime based on plan
+        slots: [],
         enemies: [],
         exitX: 900
       },
@@ -665,13 +662,9 @@
           {x:300,y:360,w:100,h:20},
           {x:450,y:380,w:100,h:20}
         ],
-        addonPickups: [], // from ADDONS
-        enemies: [
-          {x:500,y:448,w:32,h:32,dx:-1}
-        ],
-        coins: [
-          {x: 220,y:380},{x:260,y:350}
-        ],
+        addonPickups: [],
+        enemies: [{x:500,y:448,w:32,h:32,dx:-1}],
+        coins: [{x:220,y:380},{x:260,y:350}],
         exitX: 940
       },
       LEVEL4_SUMMARY: {
@@ -686,27 +679,17 @@
       const baseY = 420;
       const startX = 200;
       if (!selectedPlan) return;
-      const relationships = [];
-      if (gameState.persona.familyStatus === "single") {
-        // maybe just "Self" slot conceptually - but self is always covered
-      } else if (gameState.persona.familyStatus === "married") {
-        relationships.push("Spouse");
+      const rels = [];
+      if (gameState.persona.familyStatus === "married") {
+        rels.push("Spouse");
       } else if (gameState.persona.familyStatus === "married_parents") {
-        relationships.push("Spouse","Parent 1","Parent 2");
+        rels.push("Spouse","Parent 1","Parent 2");
       } else if (gameState.persona.familyStatus === "married_parents_kids") {
-        relationships.push("Spouse","Parent 1","Parent 2","Child 1");
+        rels.push("Spouse","Parent 1","Parent 2","Child 1");
       }
-      const max = Math.min(selectedPlan.dependentSlotCount, relationships.length);
+      const max = Math.min(selectedPlan.dependentSlotCount, rels.length);
       for (let i=0;i<max;i++) {
-        slots.push({
-          x: startX + i*160,
-          y: baseY,
-          w: 80,
-          h: 30,
-          relationship: relationships[i],
-          filled: false,
-          depId: null
-        });
+        slots.push({ x:startX + i*160, y:baseY, w:80, h:30, relationship:rels[i], filled:false, depId:null });
       }
       levelData.LEVEL2_DEPS.slots = slots;
     }
@@ -715,26 +698,27 @@
       const baseY = 420;
       const startX = 200;
       const arr = [];
-      ADDONS.forEach((addon, i) => {
-        arr.push({
-          x: startX + i*110,
-          y: baseY,
-          w: 30,
-          h: 30,
-          addonId: addon.id
-        });
+      ADDONS.forEach((addon,i) => {
+        arr.push({ x:startX + i*110, y:baseY, w:30,h:30, addonId:addon.id });
       });
       levelData.LEVEL3_ADDONS.addonPickups = arr;
     }
 
-    // -----------------------------
-    // INPUT
-    // -----------------------------
+    // ------------------------------------
+    // INPUT HANDLING (KEYBOARD)
+    // ------------------------------------
     window.addEventListener("keydown", (e) => {
       if (e.key === "ArrowLeft" || e.key === "a") keys.left = true;
       if (e.key === "ArrowRight" || e.key === "d") keys.right = true;
       if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") keys.up = true;
-      if (e.key === "Escape") togglePause();
+      if (e.key === "Escape") {
+        // Esc closes modals first, then pause
+        if (closeAnyModal()) return;
+        togglePause();
+      }
+      if (e.key === "Enter") {
+        handleEnterKey();
+      }
     });
     window.addEventListener("keyup", (e) => {
       if (e.key === "ArrowLeft" || e.key === "a") keys.left = false;
@@ -742,28 +726,27 @@
       if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") keys.up = false;
     });
 
-    document.getElementById("pause-btn").addEventListener("click", () => {
-      togglePause();
-    });
-
     function togglePause() {
-      if (gameState.screen === Screen.SPLASH || gameState.screen === Screen.ADMIN) return;
+      if (gameState.screen === Screen.SPLASH || gameState.screen === Screen.ADMIN || isAnyModalOpen()) return;
       paused = !paused;
       pauseOverlay.classList.toggle("visible", paused);
       if (paused) {
         gameState.screenBeforePause = gameState.screen;
         gameState.screen = Screen.PAUSE;
+        bgm.pause();
       } else {
         gameState.screen = gameState.screenBeforePause || Screen.WALLET_RUN;
+        playBGM();
       }
     }
 
-    // -----------------------------
+    // ------------------------------------
     // SAVE / LOAD
-    // -----------------------------
+    // ------------------------------------
     function saveGame() {
-      const payload = JSON.stringify(gameState);
-      localStorage.setItem(STORAGE_KEY, payload);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+      } catch(e) {}
     }
 
     function loadGameByMobile(mobile) {
@@ -772,16 +755,13 @@
       try {
         const data = JSON.parse(raw);
         if (data.mobileNumber === mobile) return data;
-        return null;
-      } catch(e) {
-        return null;
-      }
+      } catch(e) {}
+      return null;
     }
 
-    // -----------------------------
+    // ------------------------------------
     // UI WIRING
-    // -----------------------------
-    // Splash
+    // ------------------------------------
     document.getElementById("btn-new-game").onclick = () => {
       splashOverlay.classList.remove("visible");
       showPersonaOverlay();
@@ -816,20 +796,80 @@
         setTimeout(() => {
           authOverlay.classList.remove("visible");
           startFromSavedState();
-        }, 700);
+        }, 600);
       } else {
         status.textContent = "No saved run found for this number.";
       }
     };
 
-    // Persona
-    document.getElementById("persona-start").onclick = () => {
-      const age = document.getElementById("persona-age").value;
-      const fam = document.getElementById("persona-family").value;
-      const avatar = document.getElementById("persona-avatar").value;
-      gameState.persona = { ageBand: age, familyStatus: fam, avatarId: avatar };
-      gameState.mobileNumber = "guest"; // can set later in real flow
-      // reset wallet & enrollment
+    // Persona selection
+    const ageGrid = document.getElementById("age-grid");
+    const familyGrid = document.getElementById("family-grid");
+    const avatarGrid = document.getElementById("avatar-grid");
+    const personaStartBtn = document.getElementById("persona-start");
+
+    let personaSelection = {
+      ageIndex: 1,
+      familyIndex: 1,
+      avatarIndex: 0,
+      focusRow: "age" // "age" | "family" | "avatar"
+    };
+
+    function showPersonaOverlay() {
+      personaOverlay.classList.add("visible");
+      gameState.screen = Screen.PERSONA;
+      highlightPersonaCards();
+    }
+
+    function highlightPersonaCards() {
+      const ageCards = [...ageGrid.querySelectorAll(".persona-card")];
+      const familyCards = [...familyGrid.querySelectorAll(".persona-card")];
+      const avatarCards = [...avatarGrid.querySelectorAll(".persona-card")];
+
+      [ageCards, familyCards, avatarCards].forEach(cards => cards.forEach(c => c.classList.remove("selected")));
+
+      ageCards[personaSelection.ageIndex].classList.add("selected");
+      familyCards[personaSelection.familyIndex].classList.add("selected");
+      avatarCards[personaSelection.avatarIndex].classList.add("selected");
+    }
+
+    function personaHandleArrow(key) {
+      const ageCards = [...ageGrid.querySelectorAll(".persona-card")];
+      const familyCards = [...familyGrid.querySelectorAll(".persona-card")];
+      const avatarCards = [...avatarGrid.querySelectorAll(".persona-card")];
+
+      if (key === "ArrowUp") {
+        if (personaSelection.focusRow === "avatar") personaSelection.focusRow = "family";
+        else if (personaSelection.focusRow === "family") personaSelection.focusRow = "age";
+      }
+      if (key === "ArrowDown") {
+        if (personaSelection.focusRow === "age") personaSelection.focusRow = "family";
+        else if (personaSelection.focusRow === "family") personaSelection.focusRow = "avatar";
+      }
+      if (key === "ArrowLeft") {
+        if (personaSelection.focusRow === "age") personaSelection.ageIndex = (personaSelection.ageIndex + ageCards.length - 1) % ageCards.length;
+        if (personaSelection.focusRow === "family") personaSelection.familyIndex = (personaSelection.familyIndex + familyCards.length - 1) % familyCards.length;
+        if (personaSelection.focusRow === "avatar") personaSelection.avatarIndex = (personaSelection.avatarIndex + avatarCards.length - 1) % avatarCards.length;
+      }
+      if (key === "ArrowRight") {
+        if (personaSelection.focusRow === "age") personaSelection.ageIndex = (personaSelection.ageIndex + 1) % ageCards.length;
+        if (personaSelection.focusRow === "family") personaSelection.familyIndex = (personaSelection.familyIndex + 1) % familyCards.length;
+        if (personaSelection.focusRow === "avatar") personaSelection.avatarIndex = (personaSelection.avatarIndex + 1) % avatarCards.length;
+      }
+      highlightPersonaCards();
+    }
+
+    personaStartBtn.onclick = () => {
+      const ageCard = ageGrid.querySelectorAll(".persona-card")[personaSelection.ageIndex];
+      const familyCard = familyGrid.querySelectorAll(".persona-card")[personaSelection.familyIndex];
+      const avatarCard = avatarGrid.querySelectorAll(".persona-card")[personaSelection.avatarIndex];
+      const age = ageCard.dataset.age;
+      const family = familyCard.dataset.family;
+      const avatar = avatarCard.dataset.avatar;
+
+      gameState.persona = { ageBand: age, familyStatus: family, avatarId: avatar };
+      gameState.mobileNumber = "guest";
+
       gameState.wallet = {
         baseWallet: WALLET_SETTINGS.baseWallet,
         currentWalletAmount: WALLET_SETTINGS.baseWallet,
@@ -848,6 +888,7 @@
         outOfPocketCost: 0,
         progressStage: 0
       };
+
       personaOverlay.classList.remove("visible");
       startWalletRun();
     };
@@ -858,6 +899,10 @@
       planModalOverlay.classList.remove("visible");
     };
     document.getElementById("plan-modal-select").onclick = () => {
+      confirmPlanSelection();
+    };
+
+    function confirmPlanSelection() {
       if (!planModalPlanId) return;
       gameState.enrollment.selectedPlanId = planModalPlanId;
       recalcCosts();
@@ -865,7 +910,7 @@
       planModalOverlay.classList.remove("visible");
       gameState.enrollment.progressStage = Math.max(gameState.enrollment.progressStage, 1);
       saveGame();
-    };
+    }
 
     // Dependent modal
     let currentDepSlotIndex = null;
@@ -910,7 +955,7 @@
       if (!compatible && checkbox.checked) {
         errorLabel.textContent = "This add-on needs a different plan.";
         errorLabel.style.display = "block";
-        AudioSystem.playSFX(200,0.2);
+        playSFXBeep(220,0.2);
         return;
       }
       errorLabel.style.display = "none";
@@ -944,25 +989,26 @@
       saveGame();
     };
 
-    // Pause panel
-    document.getElementById("pause-resume").onclick = () => {
-      togglePause();
-    };
+    // Pause
+    document.getElementById("pause-btn").onclick = togglePause;
+    document.getElementById("pause-resume").onclick = togglePause;
     document.getElementById("pause-exit").onclick = () => {
       pauseOverlay.classList.remove("visible");
       paused = false;
+      stopBGM();
       gameState.screen = Screen.SPLASH;
       splashOverlay.classList.add("visible");
-      AudioSystem.stopBGM();
     };
     document.getElementById("music-volume").oninput = (e) => {
-      AudioSystem.setMusicVolume(parseFloat(e.target.value));
+      bgm.volume = parseFloat(e.target.value);
     };
     document.getElementById("sfx-volume").oninput = (e) => {
-      AudioSystem.setSFXVolume(parseFloat(e.target.value));
+      sfxVolume = parseFloat(e.target.value);
     };
     document.getElementById("mute-toggle").onchange = (e) => {
-      AudioSystem.muteAll(e.target.checked);
+      muted = e.target.checked;
+      if (muted) bgm.pause();
+      else playBGM();
     };
 
     // Celebration
@@ -972,21 +1018,16 @@
       gameState.screen = Screen.SPLASH;
     };
 
-    // -----------------------------
-    // GAME FLOW HELPERS
-    // -----------------------------
-    function showPersonaOverlay() {
-      personaOverlay.classList.add("visible");
-      gameState.screen = Screen.PERSONA;
-    }
-
+    // ------------------------------------
+    // GAME FLOW
+    // ------------------------------------
     function startWalletRun() {
       gameState.screen = Screen.WALLET_RUN;
       resetPlayer();
       player.y = 430;
       levelTimer = 0;
       maybeSpawnAngelForLevel();
-      AudioSystem.playBGM("theme0");
+      playBGM();
     }
 
     function startFromSavedState() {
@@ -994,12 +1035,12 @@
         showPersonaOverlay();
         return;
       }
-      // simple resume: go to stage based on progressStage
       if (gameState.enrollment.progressStage === 0) startWalletRun();
       else if (gameState.enrollment.progressStage === 1) startLevel1();
       else if (gameState.enrollment.progressStage === 2) startLevel2();
       else if (gameState.enrollment.progressStage === 3) startLevel3();
       else if (gameState.enrollment.progressStage >= 4) startLevel4();
+      playBGM();
     }
 
     function startLevel1() {
@@ -1008,7 +1049,6 @@
       player.y = 430;
       levelTimer = 0;
       maybeSpawnAngelForLevel();
-      AudioSystem.playBGM("theme1");
     }
 
     function startLevel2() {
@@ -1018,7 +1058,6 @@
       player.y = 430;
       levelTimer = 0;
       maybeSpawnAngelForLevel();
-      AudioSystem.playBGM("theme2");
     }
 
     function startLevel3() {
@@ -1028,7 +1067,6 @@
       player.y = 430;
       levelTimer = 0;
       maybeSpawnAngelForLevel();
-      AudioSystem.playBGM("theme3");
     }
 
     function startLevel4() {
@@ -1037,7 +1075,6 @@
       player.y = 430;
       waitingForFlagRun = false;
       levelTimer = 0;
-      AudioSystem.playBGM("theme4");
       showSummary();
     }
 
@@ -1055,24 +1092,17 @@
         html += `<p>No plan selected (uh oh, HR will not be amused).</p>`;
       }
       html += `<h3>Dependents</h3>`;
-      if (!deps.length) {
-        html += `<p>Just you, lone warrior.</p>`;
-      } else {
+      if (!deps.length) html += `<p>Just you, lone warrior.</p>`;
+      else {
         html += `<ul>`;
-        deps.forEach(d => {
-          html += `<li>${d.name} – ${d.relationship}</li>`;
-        });
+        deps.forEach(d => { html += `<li>${d.name} – ${d.relationship}</li>`; });
         html += `</ul>`;
       }
       html += `<h3>Add-ons</h3>`;
-      if (!addons.length) {
-        html += `<p>No add-ons chosen. You can always replay and experiment.</p>`;
-      } else {
+      if (!addons.length) html += `<p>No add-ons chosen. You can always replay and experiment.</p>`;
+      else {
         html += `<ul>`;
-        addons.forEach(a => {
-          if (!a) return;
-          html += `<li>${a.name} – ₹${a.price}</li>`;
-        });
+        addons.forEach(a => { if (a) html += `<li>${a.name} – ₹${a.price}</li>`; });
         html += `</ul>`;
       }
       html += `<h3>Cost breakdown</h3>`;
@@ -1092,7 +1122,7 @@
 
     function completeEnrollment() {
       gameState.screen = Screen.COMPLETE;
-      AudioSystem.stopBGM();
+      stopBGM();
       celebrationOverlay.classList.add("visible");
       const txt = document.getElementById("celebration-text");
       const plan = PLANS.find(p => p.id === gameState.enrollment.selectedPlanId);
@@ -1103,11 +1133,7 @@
     }
 
     function resetPlayer() {
-      player.x = 100;
-      player.y = 0;
-      player.vx = 0;
-      player.vy = 0;
-      player.onGround = false;
+      player.x = 100; player.y = 0; player.vx = 0; player.vy = 0; player.onGround = false;
     }
 
     function getPlanName(id) {
@@ -1118,7 +1144,7 @@
     function recalcCosts() {
       const plan = PLANS.find(p => p.id === gameState.enrollment.selectedPlanId);
       const addons = gameState.enrollment.selectedAddOns.map(id => ADDONS.find(a => a.id === id)).filter(Boolean);
-      const depCostPer = 200; // demo fixed cost per dependent
+      const depCostPer = 200;
       const depCost = gameState.enrollment.dependents.length * depCostPer;
       const planCost = plan ? plan.monthlyPrice : 0;
       const addonCost = addons.reduce((s,a)=>s+a.price,0);
@@ -1160,7 +1186,7 @@
       const baseValue = WALLET_SETTINGS.coinValue;
       const mult = gameState.wallet.angelMultiplierActive ? gameState.wallet.angelMultiplier : 1;
       gameState.wallet.currentWalletAmount += baseValue * mult;
-      AudioSystem.playSFX(880,0.08);
+      playSFXBeep(1200,0.08);
     }
 
     function collectAngel() {
@@ -1169,19 +1195,66 @@
       gameState.wallet.angelMultiplierExpiresAt = WALLET_SETTINGS.angelDurationSeconds * 1000;
       gameState.wallet.angelSpawnsUsed++;
       gameState.angel.active = false;
-      AudioSystem.playSFX(1200,0.25);
+      playSFXBeep(1600,0.25);
     }
 
-    // -----------------------------
+    // ------------------------------------
+    // MODAL HELPERS / KEY HANDLING
+    // ------------------------------------
+    function isAnyModalOpen() {
+      return [planModalOverlay, depModalOverlay, addonModalOverlay, summaryOverlay, authOverlay].some(o => o.classList.contains("visible"));
+    }
+
+    function closeAnyModal() {
+      let closed = false;
+      [planModalOverlay, depModalOverlay, addonModalOverlay, summaryOverlay, authOverlay].forEach(o => {
+        if (o.classList.contains("visible")) {
+          o.classList.remove("visible");
+          closed = true;
+        }
+      });
+      return closed;
+    }
+
+    function handleEnterKey() {
+      if (gameState.screen === Screen.SPLASH) {
+        // Enter starts new game by default
+        splashOverlay.classList.remove("visible");
+        showPersonaOverlay();
+        return;
+      }
+      if (gameState.screen === Screen.PERSONA && personaOverlay.classList.contains("visible")) {
+        personaStartBtn.click();
+        return;
+      }
+      if (planModalOverlay.classList.contains("visible")) {
+        confirmPlanSelection();
+        return;
+      }
+      if (summaryOverlay.classList.contains("visible")) {
+        document.getElementById("summary-continue-flag").click();
+        return;
+      }
+      if (gameState.screen === Screen.LEVEL1_PLANS) {
+        // press Enter while standing on plan platform to open modal
+        const lvl = levelData.LEVEL1_PLANS;
+        const planUnder = lvl.planPlatforms.find(p => rectOverlap(player, {x:p.x,y:p.y,w:p.w,h:p.h}));
+        if (planUnder) {
+          showPlanModal(planUnder.planId);
+        }
+      }
+    }
+
+    // ------------------------------------
     // MAIN LOOP
-    // -----------------------------
+    // ------------------------------------
     function tick(timestamp) {
       const dt = timestamp - lastTime;
       lastTime = timestamp;
-      if (!paused) {
+      if (!paused && !isAnyModalOpen() && gameState.screen !== Screen.SPLASH && gameState.screen !== Screen.PERSONA && gameState.screen !== Screen.ADMIN && gameState.screen !== Screen.PAUSE) {
         update(dt);
-        render();
       }
+      render();
       requestAnimationFrame(tick);
     }
 
@@ -1200,24 +1273,29 @@
         hudOutChip.style.background = "rgba(27,166,114,0.7)";
       }
 
-      // Movement / physics only in levels
+      // Movement / physics
       if ([Screen.WALLET_RUN, Screen.LEVEL1_PLANS, Screen.LEVEL2_DEPS, Screen.LEVEL3_ADDONS, Screen.LEVEL4_SUMMARY].includes(gameState.screen)) {
-        // input
         player.vx = 0;
         if (keys.left) player.vx -= MOVE_SPEED;
         if (keys.right) player.vx += MOVE_SPEED;
-        if (keys.up && player.onGround) {
+
+        // Coyote time
+        if (player.onGround) coyoteTime = COYOTE_MS;
+        else coyoteTime -= dt;
+
+        if (keys.up && (player.onGround || coyoteTime > 0)) {
           player.vy = JUMP_SPEED;
           player.onGround = false;
-          AudioSystem.playSFX(660,0.1);
+          coyoteTime = 0;
+          playSFXBeep(880,0.1);
         }
-        // gravity
+
         player.vy += GRAVITY;
         player.x += player.vx;
         player.y += player.vy;
 
         resolveCollisions();
-        handleLevelInteractions();
+        handleLevelInteractions(dt);
       }
     }
 
@@ -1232,37 +1310,31 @@
       player.onGround = false;
       groundRects.forEach(g => {
         if (rectOverlap(player, g)) {
-          if (player.vy > 0 && player.y + player.h <= g.y + player.vy + 2) {
+          if (player.vy > 0 && player.y + player.h <= g.y + player.vy + 4) {
             player.y = g.y - player.h;
             player.vy = 0;
             player.onGround = true;
           }
         }
       });
-      // keep in bounds
       if (player.x < 0) player.x = 0;
       if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
-      if (player.y > canvas.height) player.y = 0; // fall wrap
+      if (player.y > canvas.height) player.y = 0;
     }
 
     function rectOverlap(a,b) {
       return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
     }
 
-    function handleLevelInteractions() {
+    function handleLevelInteractions(dt) {
       const screen = gameState.screen;
       if (screen === Screen.WALLET_RUN) {
         const lvl = levelData.WALLET_RUN;
-        // coins
         lvl.coins = lvl.coins.filter(c => {
           const r = {x:c.x,y:c.y,w:20,h:20};
-          if (rectOverlap(player,r)) {
-            collectCoin();
-            return false;
-          }
+          if (rectOverlap(player,r)) { collectCoin(); return false; }
           return true;
         });
-        // exit to level1
         if (player.x > lvl.exitX) {
           gameState.enrollment.progressStage = Math.max(gameState.enrollment.progressStage, 1);
           startLevel1();
@@ -1270,23 +1342,15 @@
         }
       } else if (screen === Screen.LEVEL1_PLANS) {
         const lvl = levelData.LEVEL1_PLANS;
-        // simple enemies: if collide, small knockback
         lvl.enemies.forEach(e => {
           e.x += e.dx;
           if (e.x < 100 || e.x > 800) e.dx *= -1;
           if (rectOverlap(player,e)) {
-            player.x -= e.dx*10;
-            AudioSystem.playSFX(220,0.15);
+            player.x -= e.dx*8;
+            playSFXBeep(220,0.15);
           }
         });
-        // plan platforms
-        lvl.planPlatforms.forEach(p => {
-          const r = {x:p.x,y:p.y,w:p.w,h:p.h};
-          if (rectOverlap(player,r)) {
-            showPlanModal(p.planId);
-          }
-        });
-        // exit if plan selected
+        // hint text: handled in render
         if (player.x > lvl.exitX && gameState.enrollment.selectedPlanId) {
           startLevel2();
           saveGame();
@@ -1295,7 +1359,7 @@
         const lvl = levelData.LEVEL2_DEPS;
         lvl.slots.forEach((s,idx) => {
           const r = {x:s.x,y:s.y,w:s.w,h:s.h};
-          if (!s.filled && rectOverlap(player,r)) {
+          if (!s.filled && rectOverlap(player,r) && keys.up) {
             openDependentModal(idx, s.relationship);
           }
         });
@@ -1310,21 +1374,18 @@
           e.x += e.dx;
           if (e.x < 100 || e.x > 800) e.dx *= -1;
           if (rectOverlap(player,e)) {
-            player.x -= e.dx*10;
-            AudioSystem.playSFX(220,0.15);
+            player.x -= e.dx*8;
+            playSFXBeep(220,0.15);
           }
         });
         lvl.coins = lvl.coins.filter(c => {
           const r = {x:c.x,y:c.y,w:20,h:20};
-          if (rectOverlap(player,r)) {
-            collectCoin();
-            return false;
-          }
+          if (rectOverlap(player,r)) { collectCoin(); return false; }
           return true;
         });
         lvl.addonPickups.forEach(p => {
           const r = {x:p.x,y:p.y,w:p.w,h:p.h};
-          if (rectOverlap(player,r)) {
+          if (rectOverlap(player,r) && keys.up) {
             openAddonModal(p.addonId);
           }
         });
@@ -1342,9 +1403,7 @@
       // Angel
       if (gameState.angel.active) {
         const r = {x:gameState.angel.x,y:gameState.angel.y,w:32,h:32};
-        if (rectOverlap(player,r)) {
-          collectAngel();
-        }
+        if (rectOverlap(player,r)) collectAngel();
       }
     }
 
@@ -1355,7 +1414,7 @@
       document.getElementById("plan-modal-title").textContent = plan.name;
       document.getElementById("plan-modal-desc").textContent = plan.description;
       document.getElementById("plan-modal-price").textContent = "₹" + plan.monthlyPrice + "/month";
-      const hypotheticalTotal = plan.monthlyPrice; // ignoring deps/addons in preview
+      const hypotheticalTotal = plan.monthlyPrice;
       const walletAvail = gameState.wallet.currentWalletAmount;
       const walletUsed = Math.min(walletAvail, hypotheticalTotal);
       const remaining = walletAvail - walletUsed;
@@ -1398,96 +1457,80 @@
       addonModalOverlay.classList.add("visible");
     }
 
-    // -----------------------------
+    // ------------------------------------
     // RENDER
-    // -----------------------------
+    // ------------------------------------
     function render() {
       ctx2d.clearRect(0,0,canvas.width,canvas.height);
-      // background
       const grd = ctx2d.createLinearGradient(0,0,0,canvas.height);
-      grd.addColorStop(0, "#87ceeb");
-      grd.addColorStop(1, "#fff7f0");
+      grd.addColorStop(0,"#87ceeb");
+      grd.addColorStop(1,"#fff7f0");
       ctx2d.fillStyle = grd;
       ctx2d.fillRect(0,0,canvas.width,canvas.height);
 
-      // some clouds
+      // clouds
       ctx2d.fillStyle = "rgba(255,255,255,0.8)";
-      ctx2d.beginPath();
-      ctx2d.ellipse(150,100,50,20,0,0,Math.PI*2);
-      ctx2d.fill();
-      ctx2d.beginPath();
-      ctx2d.ellipse(300,70,60,24,0,0,Math.PI*2);
-      ctx2d.fill();
+      ctx2d.beginPath(); ctx2d.ellipse(150,100,50,20,0,0,Math.PI*2); ctx2d.fill();
+      ctx2d.beginPath(); ctx2d.ellipse(300,70,60,24,0,0,Math.PI*2); ctx2d.fill();
 
-      // world
       const screen = gameState.screen;
       if (screen === Screen.WALLET_RUN) {
         renderGround(levelData.WALLET_RUN.ground);
         renderCoins(levelData.WALLET_RUN.coins);
-        renderText("Wallet Run: Collect employer coins! →", 20,30);
+        renderText("Wallet Run: Collect employer coins! →",20,30);
       } else if (screen === Screen.LEVEL1_PLANS) {
         const lvl = levelData.LEVEL1_PLANS;
         renderGround(lvl.ground);
-        renderPlatforms(lvl.platformsPre, "#b5651d");
+        renderPlatforms(lvl.platformsPre,"#b5651d");
         renderPlanPlatforms(lvl.planPlatforms);
         renderEnemies(lvl.enemies);
-        renderText("Level 1: Jump on a plan to see details & select.", 20,30);
+        renderText("Level 1: Stand on a plan and press Enter to view/select.",20,30);
       } else if (screen === Screen.LEVEL2_DEPS) {
         const lvl = levelData.LEVEL2_DEPS;
         renderGround(lvl.ground);
         renderDependentSlots(lvl.slots);
-        renderText("Level 2: Jump on + slots to add family.", 20,30);
+        renderText("Level 2: Jump onto + slots and press Up to add family.",20,30);
       } else if (screen === Screen.LEVEL3_ADDONS) {
         const lvl = levelData.LEVEL3_ADDONS;
         renderGround(lvl.ground);
-        renderPlatforms(lvl.platformsPre, "#b5651d");
+        renderPlatforms(lvl.platformsPre,"#b5651d");
         renderEnemies(lvl.enemies);
         renderCoins(lvl.coins);
         renderAddonPickups(lvl.addonPickups);
-        renderText("Level 3: Run through add-ons like a health bazaar.", 20,30);
+        renderText("Level 3: Jump into add-ons and press Up to choose.",20,30);
       } else if (screen === Screen.LEVEL4_SUMMARY) {
-        const lvl = levelData.LEVEL4_SUMMARY;
-        renderGround(lvl.ground);
+        renderGround(levelData.LEVEL4_SUMMARY.ground);
         renderFlagpole();
-        if (!waitingForFlagRun) {
-          renderText("Summary open. Confirm to run to the flag →", 20,30);
-        } else {
-          renderText("Run to the flagpole to finish enrollment!", 20,30);
-        }
+        if (!waitingForFlagRun) renderText("Summary open. Confirm to run to the flag →",20,30);
+        else renderText("Run to the flagpole to finish enrollment!",20,30);
       }
 
-      // angel
       if (gameState.angel.active) {
         ctx2d.fillStyle = "#ffd700";
         ctx2d.beginPath();
-        ctx2d.arc(gameState.angel.x, gameState.angel.y, 16, 0,Math.PI*2);
+        ctx2d.arc(gameState.angel.x,gameState.angel.y,16,0,Math.PI*2);
         ctx2d.fill();
         ctx2d.fillStyle = "#000";
         ctx2d.font = "12px system-ui";
-        ctx2d.fillText("👼", gameState.angel.x-8, gameState.angel.y+4);
+        ctx2d.fillText("👼",gameState.angel.x-8,gameState.angel.y+4);
       }
 
-      // player
       renderPlayer();
     }
 
     function renderGround(grounds) {
       ctx2d.fillStyle = "#654321";
-      grounds.forEach(g => {
-        ctx2d.fillRect(g.x, g.y, g.w, g.h);
-      });
+      grounds.forEach(g => { ctx2d.fillRect(g.x,g.y,g.w,g.h); });
       ctx2d.fillStyle = "#3d8c40";
-      grounds.forEach(g => {
-        ctx2d.fillRect(g.x, g.y-8, g.w, 8);
-      });
+      grounds.forEach(g => { ctx2d.fillRect(g.x,g.y-8,g.w,8); });
     }
 
     function renderPlayer() {
       ctx2d.fillStyle = "#ff7a00";
-      ctx2d.fillRect(player.x, player.y, player.w, player.h);
+      ctx2d.fillRect(player.x,player.y,player.w,player.h);
       ctx2d.fillStyle = "#fff";
-      ctx2d.fillRect(player.x+6, player.y+8, 6,8);
-      ctx2d.fillRect(player.x+player.w-12, player.y+8, 6,8);
+      ctx2d.fillRect(player.x+6,player.y+8,6,8);
+      ctx2d.fillRect(player.x+player.w-12,player.y+8,6,8);
     }
 
     function renderCoins(coins) {
@@ -1499,11 +1542,9 @@
       });
     }
 
-    function renderPlatforms(arr, color) {
+    function renderPlatforms(arr,color) {
       ctx2d.fillStyle = color;
-      arr.forEach(p => {
-        ctx2d.fillRect(p.x,p.y,p.w,p.h);
-      });
+      arr.forEach(p => { ctx2d.fillRect(p.x,p.y,p.w,p.h); });
     }
 
     function renderPlanPlatforms(arr) {
@@ -1513,8 +1554,7 @@
         ctx2d.fillRect(p.x,p.y,p.w,p.h);
         ctx2d.fillStyle = "#000";
         ctx2d.font = "12px system-ui";
-        const label = plan.name;
-        ctx2d.fillText(label, p.x+4,p.y+18);
+        ctx2d.fillText(plan.name, p.x+4,p.y+18);
         if (plan.companySponsored) {
           ctx2d.font = "10px system-ui";
           ctx2d.fillStyle = "#1ba672";
@@ -1564,7 +1604,7 @@
       ctx2d.fillRect(888,160,60,30);
       ctx2d.fillStyle = "#fff";
       ctx2d.font = "12px system-ui";
-      ctx2d.fillText("HR", 900,178);
+      ctx2d.fillText("HR",900,178);
     }
 
     function renderText(text,x,y) {
@@ -1573,14 +1613,20 @@
       ctx2d.fillText(text,x,y);
     }
 
-    // -----------------------------
+    // ------------------------------------
     // INIT
-    // -----------------------------
+    // ------------------------------------
     function init() {
       splashOverlay.classList.add("visible");
       gameState.screen = Screen.SPLASH;
       requestAnimationFrame(tick);
     }
+
+    window.addEventListener("keydown",(e)=>{
+      if (gameState.screen === Screen.PERSONA && personaOverlay.classList.contains("visible")) {
+        personaHandleArrow(e.key);
+      }
+    });
 
     init();
   </script>
