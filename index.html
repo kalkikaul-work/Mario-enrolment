@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Health Hero Rush: Enrollment Run</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #fff7f0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+      color: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      position: relative;
+      width: 960px;
+      height: 540px;
+      background: #87ceeb;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(#87ceeb, #fff7f0);
+    }
+    #hud {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+      font-size: 13px;
+      border-radius: 8px;
+      align-items: center;
+    }
+    .hud-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 999px;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .hud-label {
+      font-weight: 600;
+    }
+    #pause-btn {
+      margin-left: auto;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #ff7a00;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #pause-btn:hover {
+      background: #c55d00;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .overlay.visible {
+      display: flex;
+    }
+    .panel {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      width: 460px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .panel h1, .panel h2, .panel h3 {
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+    .panel p {
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #444;
+    }
+    .panel label {
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .panel input, .panel select {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      justify-content: flex-end;
+    }
+    .btn {
+      border-radius: 999px;
+      padding: 8px 14px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .btn-primary {
+      background: #ff7a00;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #c55d00;
+    }
+    .btn-ghost {
+      background: #f3f3f3;
+      color: #333;
+    }
+    .btn-ghost:hover {
+      background: #e0e0e0;
+    }
+
+    #splash-options button {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    #pause-panel label {
+      font-size: 13px;
+    }
+    #pause-panel input[type="range"] {
+      width: 100%;
+    }
+
+    #warning-text {
+      color: #d32f2f;
+      font-weight: 600;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="960" height="540"></canvas>
+    <div id="hud">
+      <div class="hud-chip"><span class="hud-label">Wallet:</span> <span id="hud-wallet">₹0</span></div>
+      <div class="hud-chip"><span class="hud-label">Coins:</span> <span id="hud-coins">0</span></div>
+      <div class="hud-chip"><span class="hud-label">Progress:</span> <span id="hud-progress">0/4</span></div>
+      <div class="hud-chip" id="hud-outofpocket-chip">
+        <span class="hud-label">Your cost:</span> <span id="hud-outofpocket">₹0</span>
+      </div>
+      <div class="hud-chip" id="hud-current-selection">
+        <span class="hud-label">Current:</span> <span id="hud-current-text">-</span>
+      </div>
+      <button id="pause-btn">Pause</button>
+    </div>
+
+    <!-- Splash / Login / Admin -->
+    <div class="overlay" id="splash-overlay">
+      <div class="panel">
+        <h1>Health Hero Rush 🦸‍♀️🇮🇳</h1>
+        <p>Run, jump and enroll into your health insurance without the snooze-fest.</p>
+        <div id="splash-options">
+          <button class="btn btn-primary" id="btn-new-game">New Game</button>
+          <button class="btn btn-ghost" id="btn-continue">Continue with mobile number</button>
+          <button class="btn btn-ghost" id="btn-admin">Admin / HR Console</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auth overlay -->
+    <div class="overlay" id="auth-overlay">
+      <div class="panel">
+        <h2>Resume with Mobile Number 📲</h2>
+        <p>We’ll try to find your saved enrollment run.</p>
+        <label>Mobile number (+91)</label>
+        <input id="auth-mobile" placeholder="9876543210" />
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="auth-cancel">Cancel</button>
+          <button class="btn btn-primary" id="auth-submit">Find my game</button>
+        </div>
+        <p id="auth-status" style="margin-top:8px;font-size:13px;color:#666;"></p>
+      </div>
+    </div>
+
+    <!-- Persona selection -->
+    <div class="overlay" id="persona-overlay">
+      <div class="panel">
+        <h2>Choose your Hero Persona</h2>
+        <p>Don’t worry, even if you pick “boring adult”, you still get superpowers.</p>
+        <label>Age band</label>
+        <select id="persona-age">
+          <option value="18-25">18–25</option>
+          <option value="26-35">26–35</option>
+          <option value="36-45">36–45</option>
+          <option value="45+">45+</option>
+        </select>
+        <label>Family status</label>
+        <select id="persona-family">
+          <option value="single">Single</option>
+          <option value="married">Married</option>
+          <option value="married_parents">Married + Parents</option>
+          <option value="married_parents_kids">Married + Parents + Kids</option>
+        </select>
+        <label>Avatar style</label>
+        <select id="persona-avatar">
+          <option value="metro_maverick">Metro Maverick</option>
+          <option value="doc_defender">Doc Defender</option>
+          <option value="namma_shield">Namma Shield</option>
+          <option value="tech_tiger">Tech Tiger</option>
+        </select>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="persona-start">Start Wallet Run</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan modal -->
+    <div class="overlay" id="plan-modal-overlay">
+      <div class="panel" id="plan-panel">
+        <h2 id="plan-modal-title"></h2>
+        <p id="plan-modal-desc"></p>
+        <p><strong>Price:</strong> <span id="plan-modal-price"></span></p>
+        <p><strong>Wallet used:</strong> <span id="plan-modal-wallet"></span></p>
+        <p><strong>Remaining wallet:</strong> <span id="plan-modal-remaining"></span></p>
+        <p><strong>Out-of-pocket:</strong> <span id="plan-modal-outofpocket"></span></p>
+        <p id="plan-modal-sponsored" style="font-size:13px;color:#1ba672;font-weight:600;display:none;">Company-sponsored recommended plan ✅</p>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="plan-modal-close">Keep exploring</button>
+          <button class="btn btn-primary" id="plan-modal-select">Select this plan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dependent modal -->
+    <div class="overlay" id="dependent-modal-overlay">
+      <div class="panel">
+        <h2 id="dep-modal-title">Add dependent</h2>
+        <label>Name</label>
+        <input id="dep-name" />
+        <label>Date of birth</label>
+        <input id="dep-dob" placeholder="DD/MM/YYYY" />
+        <label>Gender</label>
+        <select id="dep-gender">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+          <option value="na">Prefer not say</option>
+        </select>
+        <label>Phone</label>
+        <input id="dep-phone" placeholder="9876543210" />
+        <label>Relationship</label>
+        <input id="dep-relationship" readonly />
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="dep-cancel">Cancel</button>
+          <button class="btn btn-primary" id="dep-save">Save dependent</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add-on modal -->
+    <div class="overlay" id="addon-modal-overlay">
+      <div class="panel">
+        <h2 id="addon-title"></h2>
+        <p id="addon-desc"></p>
+        <p><strong>Price:</strong> <span id="addon-price"></span></p>
+        <p id="addon-compat" style="font-size:13px;"></p>
+        <label>
+          <input type="checkbox" id="addon-toggle" /> Add this to my coverage
+        </label>
+        <p id="addon-error" style="color:#d32f2f;font-size:13px;display:none;"></p>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="addon-cancel">Not now</button>
+          <button class="btn btn-primary" id="addon-save">Save selection</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary / Checkout overlay -->
+    <div class="overlay" id="summary-overlay">
+      <div class="panel">
+        <h2>Review your coverage</h2>
+        <div id="summary-content" style="font-size:14px;"></div>
+        <label style="margin-top:12px;">
+          <input type="checkbox" id="summary-confirm" /> I confirm these details are correct.
+        </label>
+        <div id="warning-text" style="display:none;"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="summary-continue-flag">Confirm &amp; Go to flag</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause overlay -->
+    <div class="overlay" id="pause-overlay">
+      <div class="panel" id="pause-panel">
+        <h2>Paused ⏸</h2>
+        <label>Music volume</label>
+        <input type="range" id="music-volume" min="0" max="1" step="0.05" value="0.4" />
+        <label>SFX volume</label>
+        <input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="0.7" />
+        <label>
+          <input type="checkbox" id="mute-toggle" /> Mute all audio
+        </label>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="pause-exit">Exit to main menu</button>
+          <button class="btn btn-primary" id="pause-resume">Resume</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin console (simple) -->
+    <div class="overlay" id="admin-overlay">
+      <div class="panel" style="width:600px;">
+        <h2>Admin / HR Console (demo)</h2>
+        <p>For now, tweak config directly in the code (PLANS, ADDONS, WALLET_SETTINGS). This panel is a visual placeholder.</p>
+        <p>Future: editable forms for plans, add-ons, persona presets, wallet rules.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="admin-close">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Celebration overlay -->
+    <div class="overlay" id="celebration-overlay">
+      <div class="panel">
+        <h2>Enrollment Complete 🎉</h2>
+        <p id="celebration-text"></p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="celebration-home">Back to Home</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------
+    // CONFIG / DATA
+    // -----------------------------
+    const PLANS = [
+      {
+        id: "PLAN_COMP",
+        name: "Company Shield",
+        description: "Company-sponsored, solid cover for you and family.",
+        monthlyPrice: 2500,
+        companySponsored: true,
+        dependentSlotCount: 3
+      },
+      {
+        id: "PLAN_VALUE",
+        name: "Value Saver",
+        description: "Lower premium, ideal if you visit docs rarely.",
+        monthlyPrice: 1800,
+        companySponsored: false,
+        dependentSlotCount: 2
+      },
+      {
+        id: "PLAN_PREMIUM",
+        name: "Premium Plus",
+        description: "Max coverage, add-ons friendly, peace of mind.",
+        monthlyPrice: 3500,
+        companySponsored: false,
+        dependentSlotCount: 4
+      },
+      {
+        id: "PLAN_SINGLE",
+        name: "Solo Basic",
+        description: "For single heroes who like being independent.",
+        monthlyPrice: 1500,
+        companySponsored: false,
+        dependentSlotCount: 0
+      }
+    ];
+
+    const ADDONS = [
+      {
+        id: "ADDON_FITNESS",
+        name: "Fitness Subscription",
+        type: "fitness",
+        price: 400,
+        desc: "Gym / yoga credits to keep you in superhero shape.",
+        requiredPlanIds: []
+      },
+      {
+        id: "ADDON_DENTAL",
+        name: "Dental Cover",
+        type: "dental",
+        price: 300,
+        desc: "Covers basic dental procedures & clean-ups.",
+        requiredPlanIds: ["PLAN_COMP","PLAN_PREMIUM"]
+      },
+      {
+        id: "ADDON_OPD",
+        name: "OPD Cover",
+        type: "opd",
+        price: 500,
+        desc: "Covers OPD doctor visits up to a limit.",
+        requiredPlanIds: ["PLAN_COMP", "PLAN_VALUE", "PLAN_PREMIUM"]
+      },
+      {
+        id: "ADDON_CHECKUPS",
+        name: "Annual Health Check-ups",
+        type: "checkup",
+        price: 350,
+        desc: "Yearly full-body checkup. Very adult, very responsible.",
+        requiredPlanIds: []
+      },
+      {
+        id: "ADDON_MATERNITY",
+        name: "Maternity Plan",
+        type: "maternity",
+        price: 650,
+        desc: "Covers maternity-related hospitalization.",
+        requiredPlanIds: ["PLAN_COMP","PLAN_PREMIUM"]
+      },
+      {
+        id: "ADDON_SPECIAL",
+        name: "Speciality Add-on",
+        type: "specialty",
+        price: 420,
+        desc: "Extra cover for speciality treatments.",
+        requiredPlanIds: ["PLAN_PREMIUM"]
+      }
+    ];
+
+    const WALLET_SETTINGS = {
+      baseWallet: 10000,
+      coinValue: 50,
+      angelMultiplier: 1.5,
+      angelDurationSeconds: 60,
+      maxAngelSpawns: 3
+    };
+
+    const STORAGE_KEY = "health_hero_enrollment";
+
+    // -----------------------------
+    // SIMPLE AUDIO USING WEB AUDIO
+    // (very light chiptune style)
+    // -----------------------------
+    const AudioSystem = (() => {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      let musicGain = ctx.createGain();
+      let sfxGain = ctx.createGain();
+      let masterGain = ctx.createGain();
+      musicGain.connect(masterGain);
+      sfxGain.connect(masterGain);
+      masterGain.connect(ctx.destination);
+      musicGain.gain.value = 0.4;
+      sfxGain.gain.value = 0.7;
+      masterGain.gain.value = 1;
+
+      let currentMusicOsc = null;
+      function playBGM(theme="theme1") {
+        stopBGM();
+        // simple sawtooth drone + melody-ish beep
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.connect(gain);
+        gain.connect(musicGain);
+        gain.gain.value = 0.12;
+
+        const now = ctx.currentTime;
+        osc.frequency.setValueAtTime(220, now);
+        // pseudo melody using automation
+        osc.frequency.linearRampToValueAtTime(330, now + 0.5);
+        osc.frequency.linearRampToValueAtTime(440, now + 1.0);
+        osc.frequency.linearRampToValueAtTime(262, now + 1.5);
+        osc.frequency.linearRampToValueAtTime(330, now + 2.0);
+        osc.frequency.linearRampToValueAtTime(220, now + 2.5);
+
+        osc.start();
+        currentMusicOsc = osc;
+      }
+      function stopBGM() {
+        if (currentMusicOsc) {
+          currentMusicOsc.stop();
+          currentMusicOsc.disconnect();
+          currentMusicOsc = null;
+        }
+      }
+      function playSFX(freq=440, duration=0.1) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(sfxGain);
+        const now = ctx.currentTime;
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+      function setMusicVolume(v) {
+        musicGain.gain.value = v;
+      }
+      function setSFXVolume(v) {
+        sfxGain.gain.value = v;
+      }
+      function muteAll(m) {
+        masterGain.gain.value = m ? 0 : 1;
+      }
+      return { playBGM, stopBGM, playSFX, setMusicVolume, setSFXVolume, muteAll };
+    })();
+
+    // -----------------------------
+    // GAME STATE
+    // -----------------------------
+    const Screen = {
+      SPLASH: "SPLASH",
+      PERSONA: "PERSONA",
+      WALLET_RUN: "WALLET_RUN",
+      LEVEL1_PLANS: "LEVEL1_PLANS",
+      LEVEL2_DEPS: "LEVEL2_DEPS",
+      LEVEL3_ADDONS: "LEVEL3_ADDONS",
+      LEVEL4_SUMMARY: "LEVEL4_SUMMARY",
+      COMPLETE: "COMPLETE",
+      PAUSE: "PAUSE",
+      ADMIN: "ADMIN"
+    };
+
+    let gameState = {
+      screen: Screen.SPLASH,
+      persona: null,
+      wallet: {
+        baseWallet: WALLET_SETTINGS.baseWallet,
+        currentWalletAmount: WALLET_SETTINGS.baseWallet,
+        coinsCollected: 0,
+        angelMultiplierActive: false,
+        angelMultiplier: 1,
+        angelMultiplierExpiresAt: 0,
+        angelSpawnsUsed: 0
+      },
+      enrollment: {
+        selectedPlanId: null,
+        dependents: [],
+        selectedAddOns: [],
+        totalCost: 0,
+        walletUsage: 0,
+        outOfPocketCost: 0,
+        progressStage: 0
+      },
+      angel: {
+        active: false,
+        x: 0,
+        y: 0
+      },
+      playerProfileId: null,
+      mobileNumber: null
+    };
+
+    // -----------------------------
+    // CANVAS SETUP
+    // -----------------------------
+    const canvas = document.getElementById("game");
+    const ctx2d = canvas.getContext("2d");
+
+    const hudWallet = document.getElementById("hud-wallet");
+    const hudCoins = document.getElementById("hud-coins");
+    const hudProgress = document.getElementById("hud-progress");
+    const hudOutOfPocket = document.getElementById("hud-outofpocket");
+    const hudOutChip = document.getElementById("hud-outofpocket-chip");
+    const hudCurrentText = document.getElementById("hud-current-text");
+
+    const splashOverlay = document.getElementById("splash-overlay");
+    const personaOverlay = document.getElementById("persona-overlay");
+    const planModalOverlay = document.getElementById("plan-modal-overlay");
+    const depModalOverlay = document.getElementById("dependent-modal-overlay");
+    const addonModalOverlay = document.getElementById("addon-modal-overlay");
+    const summaryOverlay = document.getElementById("summary-overlay");
+    const pauseOverlay = document.getElementById("pause-overlay");
+    const adminOverlay = document.getElementById("admin-overlay");
+    const celebrationOverlay = document.getElementById("celebration-overlay");
+    const authOverlay = document.getElementById("auth-overlay");
+
+    // -----------------------------
+    // LEVEL / WORLD SIMPLE GEOMETRY
+    // -----------------------------
+    const GRAVITY = 0.5;
+    const MOVE_SPEED = 3;
+    const JUMP_SPEED = -10;
+
+    const player = {
+      x: 100, y: 0,
+      w: 32, h: 40,
+      vx: 0, vy: 0,
+      onGround: false,
+      facing: 1
+    };
+
+    const keys = { left:false, right:false, up:false };
+    let lastTime = performance.now();
+    let paused = false;
+    let waitingForFlagRun = false;
+    let levelTimer = 0;
+
+    // Basic level definitions: platforms, coins, plan platforms, etc
+    const levelData = {
+      WALLET_RUN: {
+        ground: [{x:0,y:480,w:2000,h:60}],
+        coins: [
+          {x: 200, y: 380}, {x:240,y:350},{x:280,y:320},
+          {x:450,y:380},{x:490,y:350},{x:530,y:320}
+        ],
+        enemies: [],
+        exitX: 900
+      },
+      LEVEL1_PLANS: {
+        ground: [{x:0,y:480,w:2000,h:60}],
+        platformsPre: [
+          {x:150,y:400,w:100,h:20},
+          {x:300,y:360,w:100,h:20},
+          {x:450,y:320,w:100,h:20},
+          {x:600,y:360,w:100,h:20}
+        ],
+        planPlatforms: [
+          {x:150,y:420,w:160,h:30, planId:"PLAN_COMP"},
+          {x:360,y:420,w:160,h:30, planId:"PLAN_VALUE"},
+          {x:570,y:420,w:160,h:30, planId:"PLAN_PREMIUM"},
+          {x:780,y:420,w:160,h:30, planId:"PLAN_SINGLE"}
+        ],
+        enemies: [
+          {x:350,y:448,w:32,h:32,dx:1}
+        ],
+        coins: [],
+        exitX: 950
+      },
+      LEVEL2_DEPS: {
+        ground: [{x:0,y:480,w:2000,h:60}],
+        slots: [], // filled at runtime based on plan
+        enemies: [],
+        exitX: 900
+      },
+      LEVEL3_ADDONS: {
+        ground: [{x:0,y:480,w:2000,h:60}],
+        platformsPre: [
+          {x:150,y:400,w:100,h:20},
+          {x:300,y:360,w:100,h:20},
+          {x:450,y:380,w:100,h:20}
+        ],
+        addonPickups: [], // from ADDONS
+        enemies: [
+          {x:500,y:448,w:32,h:32,dx:-1}
+        ],
+        coins: [
+          {x: 220,y:380},{x:260,y:350}
+        ],
+        exitX: 940
+      },
+      LEVEL4_SUMMARY: {
+        ground: [{x:0,y:480,w:2000,h:60}],
+        exitX: 900
+      }
+    };
+
+    function setupDependentsSlots() {
+      const selectedPlan = PLANS.find(p => p.id === gameState.enrollment.selectedPlanId);
+      const slots = [];
+      const baseY = 420;
+      const startX = 200;
+      if (!selectedPlan) return;
+      const relationships = [];
+      if (gameState.persona.familyStatus === "single") {
+        // maybe just "Self" slot conceptually - but self is always covered
+      } else if (gameState.persona.familyStatus === "married") {
+        relationships.push("Spouse");
+      } else if (gameState.persona.familyStatus === "married_parents") {
+        relationships.push("Spouse","Parent 1","Parent 2");
+      } else if (gameState.persona.familyStatus === "married_parents_kids") {
+        relationships.push("Spouse","Parent 1","Parent 2","Child 1");
+      }
+      const max = Math.min(selectedPlan.dependentSlotCount, relationships.length);
+      for (let i=0;i<max;i++) {
+        slots.push({
+          x: startX + i*160,
+          y: baseY,
+          w: 80,
+          h: 30,
+          relationship: relationships[i],
+          filled: false,
+          depId: null
+        });
+      }
+      levelData.LEVEL2_DEPS.slots = slots;
+    }
+
+    function setupAddonsPickups() {
+      const baseY = 420;
+      const startX = 200;
+      const arr = [];
+      ADDONS.forEach((addon, i) => {
+        arr.push({
+          x: startX + i*110,
+          y: baseY,
+          w: 30,
+          h: 30,
+          addonId: addon.id
+        });
+      });
+      levelData.LEVEL3_ADDONS.addonPickups = arr;
+    }
+
+    // -----------------------------
+    // INPUT
+    // -----------------------------
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "a") keys.left = true;
+      if (e.key === "ArrowRight" || e.key === "d") keys.right = true;
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") keys.up = true;
+      if (e.key === "Escape") togglePause();
+    });
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "a") keys.left = false;
+      if (e.key === "ArrowRight" || e.key === "d") keys.right = false;
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") keys.up = false;
+    });
+
+    document.getElementById("pause-btn").addEventListener("click", () => {
+      togglePause();
+    });
+
+    function togglePause() {
+      if (gameState.screen === Screen.SPLASH || gameState.screen === Screen.ADMIN) return;
+      paused = !paused;
+      pauseOverlay.classList.toggle("visible", paused);
+      if (paused) {
+        gameState.screenBeforePause = gameState.screen;
+        gameState.screen = Screen.PAUSE;
+      } else {
+        gameState.screen = gameState.screenBeforePause || Screen.WALLET_RUN;
+      }
+    }
+
+    // -----------------------------
+    // SAVE / LOAD
+    // -----------------------------
+    function saveGame() {
+      const payload = JSON.stringify(gameState);
+      localStorage.setItem(STORAGE_KEY, payload);
+    }
+
+    function loadGameByMobile(mobile) {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      try {
+        const data = JSON.parse(raw);
+        if (data.mobileNumber === mobile) return data;
+        return null;
+      } catch(e) {
+        return null;
+      }
+    }
+
+    // -----------------------------
+    // UI WIRING
+    // -----------------------------
+    // Splash
+    document.getElementById("btn-new-game").onclick = () => {
+      splashOverlay.classList.remove("visible");
+      showPersonaOverlay();
+    };
+    document.getElementById("btn-continue").onclick = () => {
+      splashOverlay.classList.remove("visible");
+      authOverlay.classList.add("visible");
+    };
+    document.getElementById("btn-admin").onclick = () => {
+      splashOverlay.classList.remove("visible");
+      adminOverlay.classList.add("visible");
+      gameState.screen = Screen.ADMIN;
+    };
+    document.getElementById("admin-close").onclick = () => {
+      adminOverlay.classList.remove("visible");
+      splashOverlay.classList.add("visible");
+      gameState.screen = Screen.SPLASH;
+    };
+
+    // Auth
+    document.getElementById("auth-cancel").onclick = () => {
+      authOverlay.classList.remove("visible");
+      splashOverlay.classList.add("visible");
+    };
+    document.getElementById("auth-submit").onclick = () => {
+      const mobile = document.getElementById("auth-mobile").value.trim();
+      const status = document.getElementById("auth-status");
+      const data = loadGameByMobile(mobile);
+      if (data) {
+        gameState = data;
+        status.textContent = "Found your run! Resuming…";
+        setTimeout(() => {
+          authOverlay.classList.remove("visible");
+          startFromSavedState();
+        }, 700);
+      } else {
+        status.textContent = "No saved run found for this number.";
+      }
+    };
+
+    // Persona
+    document.getElementById("persona-start").onclick = () => {
+      const age = document.getElementById("persona-age").value;
+      const fam = document.getElementById("persona-family").value;
+      const avatar = document.getElementById("persona-avatar").value;
+      gameState.persona = { ageBand: age, familyStatus: fam, avatarId: avatar };
+      gameState.mobileNumber = "guest"; // can set later in real flow
+      // reset wallet & enrollment
+      gameState.wallet = {
+        baseWallet: WALLET_SETTINGS.baseWallet,
+        currentWalletAmount: WALLET_SETTINGS.baseWallet,
+        coinsCollected: 0,
+        angelMultiplierActive: false,
+        angelMultiplier: 1,
+        angelMultiplierExpiresAt: 0,
+        angelSpawnsUsed: 0
+      };
+      gameState.enrollment = {
+        selectedPlanId: null,
+        dependents: [],
+        selectedAddOns: [],
+        totalCost: 0,
+        walletUsage: 0,
+        outOfPocketCost: 0,
+        progressStage: 0
+      };
+      personaOverlay.classList.remove("visible");
+      startWalletRun();
+    };
+
+    // Plan modal
+    let planModalPlanId = null;
+    document.getElementById("plan-modal-close").onclick = () => {
+      planModalOverlay.classList.remove("visible");
+    };
+    document.getElementById("plan-modal-select").onclick = () => {
+      if (!planModalPlanId) return;
+      gameState.enrollment.selectedPlanId = planModalPlanId;
+      recalcCosts();
+      hudCurrentText.textContent = "Plan: " + getPlanName(planModalPlanId);
+      planModalOverlay.classList.remove("visible");
+      gameState.enrollment.progressStage = Math.max(gameState.enrollment.progressStage, 1);
+      saveGame();
+    };
+
+    // Dependent modal
+    let currentDepSlotIndex = null;
+    document.getElementById("dep-cancel").onclick = () => {
+      depModalOverlay.classList.remove("visible");
+    };
+    document.getElementById("dep-save").onclick = () => {
+      const name = document.getElementById("dep-name").value.trim();
+      const dob = document.getElementById("dep-dob").value.trim();
+      const gender = document.getElementById("dep-gender").value;
+      const phone = document.getElementById("dep-phone").value.trim();
+      const rel = document.getElementById("dep-relationship").value;
+      if (!name || !dob || !phone) {
+        alert("Please fill in name, DOB and phone.");
+        return;
+      }
+      const dep = { id: Date.now()+"", name, dob, gender, phone, relationship: rel };
+      gameState.enrollment.dependents.push(dep);
+      if (currentDepSlotIndex != null) {
+        levelData.LEVEL2_DEPS.slots[currentDepSlotIndex].filled = true;
+        levelData.LEVEL2_DEPS.slots[currentDepSlotIndex].depId = dep.id;
+      }
+      currentDepSlotIndex = null;
+      depModalOverlay.classList.remove("visible");
+      recalcCosts();
+      gameState.enrollment.progressStage = Math.max(gameState.enrollment.progressStage, 2);
+      saveGame();
+    };
+
+    // Add-on modal
+    let currentAddonId = null;
+    document.getElementById("addon-cancel").onclick = () => {
+      addonModalOverlay.classList.remove("visible");
+    };
+    document.getElementById("addon-save").onclick = () => {
+      const checkbox = document.getElementById("addon-toggle");
+      const errorLabel = document.getElementById("addon-error");
+      const addon = ADDONS.find(a => a.id === currentAddonId);
+      if (!addon) return;
+      const selectedPlanId = gameState.enrollment.selectedPlanId;
+      const compatible = addon.requiredPlanIds.length === 0 || addon.requiredPlanIds.includes(selectedPlanId);
+      if (!compatible && checkbox.checked) {
+        errorLabel.textContent = "This add-on needs a different plan.";
+        errorLabel.style.display = "block";
+        AudioSystem.playSFX(200,0.2);
+        return;
+      }
+      errorLabel.style.display = "none";
+      if (checkbox.checked) {
+        if (!gameState.enrollment.selectedAddOns.includes(currentAddonId)) {
+          gameState.enrollment.selectedAddOns.push(currentAddonId);
+        }
+      } else {
+        gameState.enrollment.selectedAddOns = gameState.enrollment.selectedAddOns.filter(id => id !== currentAddonId);
+      }
+      recalcCosts();
+      hudCurrentText.textContent = "Add-on: " + addon.name;
+      addonModalOverlay.classList.remove("visible");
+      gameState.enrollment.progressStage = Math.max(gameState.enrollment.progressStage, 3);
+      saveGame();
+    };
+
+    // Summary
+    document.getElementById("summary-continue-flag").onclick = () => {
+      const chk = document.getElementById("summary-confirm");
+      const warn = document.getElementById("warning-text");
+      if (!chk.checked) {
+        warn.textContent = "Please confirm your details before we let you slide into the flagpole.";
+        warn.style.display = "block";
+        return;
+      }
+      warn.style.display = "none";
+      summaryOverlay.classList.remove("visible");
+      waitingForFlagRun = true;
+      gameState.enrollment.progressStage = 4;
+      saveGame();
+    };
+
+    // Pause panel
+    document.getElementById("pause-resume").onclick = () => {
+      togglePause();
+    };
+    document.getElementById("pause-exit").onclick = () => {
+      pauseOverlay.classList.remove("visible");
+      paused = false;
+      gameState.screen = Screen.SPLASH;
+      splashOverlay.classList.add("visible");
+      AudioSystem.stopBGM();
+    };
+    document.getElementById("music-volume").oninput = (e) => {
+      AudioSystem.setMusicVolume(parseFloat(e.target.value));
+    };
+    document.getElementById("sfx-volume").oninput = (e) => {
+      AudioSystem.setSFXVolume(parseFloat(e.target.value));
+    };
+    document.getElementById("mute-toggle").onchange = (e) => {
+      AudioSystem.muteAll(e.target.checked);
+    };
+
+    // Celebration
+    document.getElementById("celebration-home").onclick = () => {
+      celebrationOverlay.classList.remove("visible");
+      splashOverlay.classList.add("visible");
+      gameState.screen = Screen.SPLASH;
+    };
+
+    // -----------------------------
+    // GAME FLOW HELPERS
+    // -----------------------------
+    function showPersonaOverlay() {
+      personaOverlay.classList.add("visible");
+      gameState.screen = Screen.PERSONA;
+    }
+
+    function startWalletRun() {
+      gameState.screen = Screen.WALLET_RUN;
+      resetPlayer();
+      player.y = 430;
+      levelTimer = 0;
+      maybeSpawnAngelForLevel();
+      AudioSystem.playBGM("theme0");
+    }
+
+    function startFromSavedState() {
+      if (!gameState.persona) {
+        showPersonaOverlay();
+        return;
+      }
+      // simple resume: go to stage based on progressStage
+      if (gameState.enrollment.progressStage === 0) startWalletRun();
+      else if (gameState.enrollment.progressStage === 1) startLevel1();
+      else if (gameState.enrollment.progressStage === 2) startLevel2();
+      else if (gameState.enrollment.progressStage === 3) startLevel3();
+      else if (gameState.enrollment.progressStage >= 4) startLevel4();
+    }
+
+    function startLevel1() {
+      gameState.screen = Screen.LEVEL1_PLANS;
+      resetPlayer();
+      player.y = 430;
+      levelTimer = 0;
+      maybeSpawnAngelForLevel();
+      AudioSystem.playBGM("theme1");
+    }
+
+    function startLevel2() {
+      setupDependentsSlots();
+      gameState.screen = Screen.LEVEL2_DEPS;
+      resetPlayer();
+      player.y = 430;
+      levelTimer = 0;
+      maybeSpawnAngelForLevel();
+      AudioSystem.playBGM("theme2");
+    }
+
+    function startLevel3() {
+      setupAddonsPickups();
+      gameState.screen = Screen.LEVEL3_ADDONS;
+      resetPlayer();
+      player.y = 430;
+      levelTimer = 0;
+      maybeSpawnAngelForLevel();
+      AudioSystem.playBGM("theme3");
+    }
+
+    function startLevel4() {
+      gameState.screen = Screen.LEVEL4_SUMMARY;
+      resetPlayer();
+      player.y = 430;
+      waitingForFlagRun = false;
+      levelTimer = 0;
+      AudioSystem.playBGM("theme4");
+      showSummary();
+    }
+
+    function showSummary() {
+      const content = document.getElementById("summary-content");
+      const plan = PLANS.find(p => p.id === gameState.enrollment.selectedPlanId);
+      const deps = gameState.enrollment.dependents;
+      const addons = gameState.enrollment.selectedAddOns.map(id => ADDONS.find(a=>a.id===id));
+      const e = gameState.enrollment;
+      let html = "";
+      html += `<h3>Plan</h3>`;
+      if (plan) {
+        html += `<p><strong>${plan.name}</strong> – ₹${plan.monthlyPrice}/month ${plan.companySponsored ? "(Company-sponsored)" : ""}</p>`;
+      } else {
+        html += `<p>No plan selected (uh oh, HR will not be amused).</p>`;
+      }
+      html += `<h3>Dependents</h3>`;
+      if (!deps.length) {
+        html += `<p>Just you, lone warrior.</p>`;
+      } else {
+        html += `<ul>`;
+        deps.forEach(d => {
+          html += `<li>${d.name} – ${d.relationship}</li>`;
+        });
+        html += `</ul>`;
+      }
+      html += `<h3>Add-ons</h3>`;
+      if (!addons.length) {
+        html += `<p>No add-ons chosen. You can always replay and experiment.</p>`;
+      } else {
+        html += `<ul>`;
+        addons.forEach(a => {
+          if (!a) return;
+          html += `<li>${a.name} – ₹${a.price}</li>`;
+        });
+        html += `</ul>`;
+      }
+      html += `<h3>Cost breakdown</h3>`;
+      html += `<p>Total premium: ₹${e.totalCost}</p>`;
+      html += `<p>Wallet used (company): ₹${e.walletUsage}</p>`;
+      html += `<p><strong>Your cost (out-of-pocket): ₹${e.outOfPocketCost}</strong></p>`;
+      content.innerHTML = html;
+      const warn = document.getElementById("warning-text");
+      if (e.outOfPocketCost > 0) {
+        warn.textContent = `You are exceeding wallet by ₹${e.outOfPocketCost}.`;
+        warn.style.display = "block";
+      } else {
+        warn.style.display = "none";
+      }
+      summaryOverlay.classList.add("visible");
+    }
+
+    function completeEnrollment() {
+      gameState.screen = Screen.COMPLETE;
+      AudioSystem.stopBGM();
+      celebrationOverlay.classList.add("visible");
+      const txt = document.getElementById("celebration-text");
+      const plan = PLANS.find(p => p.id === gameState.enrollment.selectedPlanId);
+      txt.textContent = plan
+        ? `You enrolled into ${plan.name}. HR ka dil khush, future you also khush. 🎊`
+        : `You completed the run. But please choose a plan next time before celebrating. 😅`;
+      saveGame();
+    }
+
+    function resetPlayer() {
+      player.x = 100;
+      player.y = 0;
+      player.vx = 0;
+      player.vy = 0;
+      player.onGround = false;
+    }
+
+    function getPlanName(id) {
+      const p = PLANS.find(p => p.id === id);
+      return p ? p.name : "-";
+    }
+
+    function recalcCosts() {
+      const plan = PLANS.find(p => p.id === gameState.enrollment.selectedPlanId);
+      const addons = gameState.enrollment.selectedAddOns.map(id => ADDONS.find(a => a.id === id)).filter(Boolean);
+      const depCostPer = 200; // demo fixed cost per dependent
+      const depCost = gameState.enrollment.dependents.length * depCostPer;
+      const planCost = plan ? plan.monthlyPrice : 0;
+      const addonCost = addons.reduce((s,a)=>s+a.price,0);
+      const total = planCost + addonCost + depCost;
+      const walletAvail = gameState.wallet.currentWalletAmount;
+      const walletUsed = Math.min(walletAvail, total);
+      const oop = Math.max(0, total-walletUsed);
+      gameState.enrollment.totalCost = total;
+      gameState.enrollment.walletUsage = walletUsed;
+      gameState.enrollment.outOfPocketCost = oop;
+    }
+
+    function maybeSpawnAngelForLevel() {
+      if (gameState.wallet.angelSpawnsUsed >= WALLET_SETTINGS.maxAngelSpawns) {
+        gameState.angel.active = false;
+        return;
+      }
+      const chance = 0.4;
+      if (Math.random() < chance) {
+        gameState.angel.active = true;
+        gameState.angel.x = 500;
+        gameState.angel.y = 250;
+      } else {
+        gameState.angel.active = false;
+      }
+    }
+
+    function updateAngelTimer(dt) {
+      if (!gameState.wallet.angelMultiplierActive) return;
+      gameState.wallet.angelMultiplierExpiresAt -= dt;
+      if (gameState.wallet.angelMultiplierExpiresAt <= 0) {
+        gameState.wallet.angelMultiplierActive = false;
+        gameState.wallet.angelMultiplier = 1;
+      }
+    }
+
+    function collectCoin() {
+      gameState.wallet.coinsCollected++;
+      const baseValue = WALLET_SETTINGS.coinValue;
+      const mult = gameState.wallet.angelMultiplierActive ? gameState.wallet.angelMultiplier : 1;
+      gameState.wallet.currentWalletAmount += baseValue * mult;
+      AudioSystem.playSFX(880,0.08);
+    }
+
+    function collectAngel() {
+      gameState.wallet.angelMultiplierActive = true;
+      gameState.wallet.angelMultiplier = WALLET_SETTINGS.angelMultiplier;
+      gameState.wallet.angelMultiplierExpiresAt = WALLET_SETTINGS.angelDurationSeconds * 1000;
+      gameState.wallet.angelSpawnsUsed++;
+      gameState.angel.active = false;
+      AudioSystem.playSFX(1200,0.25);
+    }
+
+    // -----------------------------
+    // MAIN LOOP
+    // -----------------------------
+    function tick(timestamp) {
+      const dt = timestamp - lastTime;
+      lastTime = timestamp;
+      if (!paused) {
+        update(dt);
+        render();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function update(dt) {
+      levelTimer += dt;
+      updateAngelTimer(dt);
+
+      // HUD
+      hudWallet.textContent = "₹" + Math.round(gameState.wallet.currentWalletAmount);
+      hudCoins.textContent = gameState.wallet.coinsCollected;
+      hudProgress.textContent = `${gameState.enrollment.progressStage}/4`;
+      hudOutOfPocket.textContent = "₹" + gameState.enrollment.outOfPocketCost;
+      if (gameState.enrollment.outOfPocketCost > 0) {
+        hudOutChip.style.background = "rgba(200,40,40,0.7)";
+      } else {
+        hudOutChip.style.background = "rgba(27,166,114,0.7)";
+      }
+
+      // Movement / physics only in levels
+      if ([Screen.WALLET_RUN, Screen.LEVEL1_PLANS, Screen.LEVEL2_DEPS, Screen.LEVEL3_ADDONS, Screen.LEVEL4_SUMMARY].includes(gameState.screen)) {
+        // input
+        player.vx = 0;
+        if (keys.left) player.vx -= MOVE_SPEED;
+        if (keys.right) player.vx += MOVE_SPEED;
+        if (keys.up && player.onGround) {
+          player.vy = JUMP_SPEED;
+          player.onGround = false;
+          AudioSystem.playSFX(660,0.1);
+        }
+        // gravity
+        player.vy += GRAVITY;
+        player.x += player.vx;
+        player.y += player.vy;
+
+        resolveCollisions();
+        handleLevelInteractions();
+      }
+    }
+
+    function resolveCollisions() {
+      let groundRects = [];
+      const screen = gameState.screen;
+      if (screen === Screen.WALLET_RUN) groundRects = levelData.WALLET_RUN.ground;
+      else if (screen === Screen.LEVEL1_PLANS) groundRects = levelData.LEVEL1_PLANS.ground;
+      else if (screen === Screen.LEVEL2_DEPS) groundRects = levelData.LEVEL2_DEPS.ground;
+      else if (screen === Screen.LEVEL3_ADDONS) groundRects = levelData.LEVEL3_ADDONS.ground;
+      else if (screen === Screen.LEVEL4_SUMMARY) groundRects = levelData.LEVEL4_SUMMARY.ground;
+      player.onGround = false;
+      groundRects.forEach(g => {
+        if (rectOverlap(player, g)) {
+          if (player.vy > 0 && player.y + player.h <= g.y + player.vy + 2) {
+            player.y = g.y - player.h;
+            player.vy = 0;
+            player.onGround = true;
+          }
+        }
+      });
+      // keep in bounds
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+      if (player.y > canvas.height) player.y = 0; // fall wrap
+    }
+
+    function rectOverlap(a,b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function handleLevelInteractions() {
+      const screen = gameState.screen;
+      if (screen === Screen.WALLET_RUN) {
+        const lvl = levelData.WALLET_RUN;
+        // coins
+        lvl.coins = lvl.coins.filter(c => {
+          const r = {x:c.x,y:c.y,w:20,h:20};
+          if (rectOverlap(player,r)) {
+            collectCoin();
+            return false;
+          }
+          return true;
+        });
+        // exit to level1
+        if (player.x > lvl.exitX) {
+          gameState.enrollment.progressStage = Math.max(gameState.enrollment.progressStage, 1);
+          startLevel1();
+          saveGame();
+        }
+      } else if (screen === Screen.LEVEL1_PLANS) {
+        const lvl = levelData.LEVEL1_PLANS;
+        // simple enemies: if collide, small knockback
+        lvl.enemies.forEach(e => {
+          e.x += e.dx;
+          if (e.x < 100 || e.x > 800) e.dx *= -1;
+          if (rectOverlap(player,e)) {
+            player.x -= e.dx*10;
+            AudioSystem.playSFX(220,0.15);
+          }
+        });
+        // plan platforms
+        lvl.planPlatforms.forEach(p => {
+          const r = {x:p.x,y:p.y,w:p.w,h:p.h};
+          if (rectOverlap(player,r)) {
+            showPlanModal(p.planId);
+          }
+        });
+        // exit if plan selected
+        if (player.x > lvl.exitX && gameState.enrollment.selectedPlanId) {
+          startLevel2();
+          saveGame();
+        }
+      } else if (screen === Screen.LEVEL2_DEPS) {
+        const lvl = levelData.LEVEL2_DEPS;
+        lvl.slots.forEach((s,idx) => {
+          const r = {x:s.x,y:s.y,w:s.w,h:s.h};
+          if (!s.filled && rectOverlap(player,r)) {
+            openDependentModal(idx, s.relationship);
+          }
+        });
+        const filledCount = lvl.slots.filter(s => s.filled).length;
+        if (player.x > lvl.exitX && filledCount === lvl.slots.length) {
+          startLevel3();
+          saveGame();
+        }
+      } else if (screen === Screen.LEVEL3_ADDONS) {
+        const lvl = levelData.LEVEL3_ADDONS;
+        lvl.enemies.forEach(e => {
+          e.x += e.dx;
+          if (e.x < 100 || e.x > 800) e.dx *= -1;
+          if (rectOverlap(player,e)) {
+            player.x -= e.dx*10;
+            AudioSystem.playSFX(220,0.15);
+          }
+        });
+        lvl.coins = lvl.coins.filter(c => {
+          const r = {x:c.x,y:c.y,w:20,h:20};
+          if (rectOverlap(player,r)) {
+            collectCoin();
+            return false;
+          }
+          return true;
+        });
+        lvl.addonPickups.forEach(p => {
+          const r = {x:p.x,y:p.y,w:p.w,h:p.h};
+          if (rectOverlap(player,r)) {
+            openAddonModal(p.addonId);
+          }
+        });
+        if (player.x > lvl.exitX) {
+          startLevel4();
+          saveGame();
+        }
+      } else if (screen === Screen.LEVEL4_SUMMARY) {
+        const lvl = levelData.LEVEL4_SUMMARY;
+        if (waitingForFlagRun && player.x > lvl.exitX) {
+          completeEnrollment();
+        }
+      }
+
+      // Angel
+      if (gameState.angel.active) {
+        const r = {x:gameState.angel.x,y:gameState.angel.y,w:32,h:32};
+        if (rectOverlap(player,r)) {
+          collectAngel();
+        }
+      }
+    }
+
+    function showPlanModal(planId) {
+      const plan = PLANS.find(p => p.id === planId);
+      if (!plan) return;
+      planModalPlanId = planId;
+      document.getElementById("plan-modal-title").textContent = plan.name;
+      document.getElementById("plan-modal-desc").textContent = plan.description;
+      document.getElementById("plan-modal-price").textContent = "₹" + plan.monthlyPrice + "/month";
+      const hypotheticalTotal = plan.monthlyPrice; // ignoring deps/addons in preview
+      const walletAvail = gameState.wallet.currentWalletAmount;
+      const walletUsed = Math.min(walletAvail, hypotheticalTotal);
+      const remaining = walletAvail - walletUsed;
+      const oop = Math.max(0, hypotheticalTotal-walletUsed);
+      document.getElementById("plan-modal-wallet").textContent = "₹" + walletUsed;
+      document.getElementById("plan-modal-remaining").textContent = "₹" + remaining;
+      document.getElementById("plan-modal-outofpocket").textContent = "₹" + oop;
+      const sponsored = document.getElementById("plan-modal-sponsored");
+      sponsored.style.display = plan.companySponsored ? "block" : "none";
+      planModalOverlay.classList.add("visible");
+    }
+
+    function openDependentModal(slotIndex, relationship) {
+      currentDepSlotIndex = slotIndex;
+      document.getElementById("dep-modal-title").textContent = "Add " + relationship;
+      document.getElementById("dep-name").value = "";
+      document.getElementById("dep-dob").value = "";
+      document.getElementById("dep-gender").value = "male";
+      document.getElementById("dep-phone").value = "";
+      document.getElementById("dep-relationship").value = relationship;
+      depModalOverlay.classList.add("visible");
+    }
+
+    function openAddonModal(addonId) {
+      currentAddonId = addonId;
+      const addon = ADDONS.find(a => a.id === addonId);
+      if (!addon) return;
+      document.getElementById("addon-title").textContent = addon.name;
+      document.getElementById("addon-desc").textContent = addon.desc;
+      document.getElementById("addon-price").textContent = "₹" + addon.price;
+      const selectedPlanId = gameState.enrollment.selectedPlanId;
+      const compatible = addon.requiredPlanIds.length === 0 || addon.requiredPlanIds.includes(selectedPlanId);
+      const compatLabel = document.getElementById("addon-compat");
+      compatLabel.textContent = compatible
+        ? "Works with your current plan."
+        : "Requires a different plan (see admin config).";
+      const checkbox = document.getElementById("addon-toggle");
+      checkbox.checked = gameState.enrollment.selectedAddOns.includes(addonId);
+      document.getElementById("addon-error").style.display = "none";
+      addonModalOverlay.classList.add("visible");
+    }
+
+    // -----------------------------
+    // RENDER
+    // -----------------------------
+    function render() {
+      ctx2d.clearRect(0,0,canvas.width,canvas.height);
+      // background
+      const grd = ctx2d.createLinearGradient(0,0,0,canvas.height);
+      grd.addColorStop(0, "#87ceeb");
+      grd.addColorStop(1, "#fff7f0");
+      ctx2d.fillStyle = grd;
+      ctx2d.fillRect(0,0,canvas.width,canvas.height);
+
+      // some clouds
+      ctx2d.fillStyle = "rgba(255,255,255,0.8)";
+      ctx2d.beginPath();
+      ctx2d.ellipse(150,100,50,20,0,0,Math.PI*2);
+      ctx2d.fill();
+      ctx2d.beginPath();
+      ctx2d.ellipse(300,70,60,24,0,0,Math.PI*2);
+      ctx2d.fill();
+
+      // world
+      const screen = gameState.screen;
+      if (screen === Screen.WALLET_RUN) {
+        renderGround(levelData.WALLET_RUN.ground);
+        renderCoins(levelData.WALLET_RUN.coins);
+        renderText("Wallet Run: Collect employer coins! →", 20,30);
+      } else if (screen === Screen.LEVEL1_PLANS) {
+        const lvl = levelData.LEVEL1_PLANS;
+        renderGround(lvl.ground);
+        renderPlatforms(lvl.platformsPre, "#b5651d");
+        renderPlanPlatforms(lvl.planPlatforms);
+        renderEnemies(lvl.enemies);
+        renderText("Level 1: Jump on a plan to see details & select.", 20,30);
+      } else if (screen === Screen.LEVEL2_DEPS) {
+        const lvl = levelData.LEVEL2_DEPS;
+        renderGround(lvl.ground);
+        renderDependentSlots(lvl.slots);
+        renderText("Level 2: Jump on + slots to add family.", 20,30);
+      } else if (screen === Screen.LEVEL3_ADDONS) {
+        const lvl = levelData.LEVEL3_ADDONS;
+        renderGround(lvl.ground);
+        renderPlatforms(lvl.platformsPre, "#b5651d");
+        renderEnemies(lvl.enemies);
+        renderCoins(lvl.coins);
+        renderAddonPickups(lvl.addonPickups);
+        renderText("Level 3: Run through add-ons like a health bazaar.", 20,30);
+      } else if (screen === Screen.LEVEL4_SUMMARY) {
+        const lvl = levelData.LEVEL4_SUMMARY;
+        renderGround(lvl.ground);
+        renderFlagpole();
+        if (!waitingForFlagRun) {
+          renderText("Summary open. Confirm to run to the flag →", 20,30);
+        } else {
+          renderText("Run to the flagpole to finish enrollment!", 20,30);
+        }
+      }
+
+      // angel
+      if (gameState.angel.active) {
+        ctx2d.fillStyle = "#ffd700";
+        ctx2d.beginPath();
+        ctx2d.arc(gameState.angel.x, gameState.angel.y, 16, 0,Math.PI*2);
+        ctx2d.fill();
+        ctx2d.fillStyle = "#000";
+        ctx2d.font = "12px system-ui";
+        ctx2d.fillText("👼", gameState.angel.x-8, gameState.angel.y+4);
+      }
+
+      // player
+      renderPlayer();
+    }
+
+    function renderGround(grounds) {
+      ctx2d.fillStyle = "#654321";
+      grounds.forEach(g => {
+        ctx2d.fillRect(g.x, g.y, g.w, g.h);
+      });
+      ctx2d.fillStyle = "#3d8c40";
+      grounds.forEach(g => {
+        ctx2d.fillRect(g.x, g.y-8, g.w, 8);
+      });
+    }
+
+    function renderPlayer() {
+      ctx2d.fillStyle = "#ff7a00";
+      ctx2d.fillRect(player.x, player.y, player.w, player.h);
+      ctx2d.fillStyle = "#fff";
+      ctx2d.fillRect(player.x+6, player.y+8, 6,8);
+      ctx2d.fillRect(player.x+player.w-12, player.y+8, 6,8);
+    }
+
+    function renderCoins(coins) {
+      ctx2d.fillStyle = "#ffd700";
+      coins.forEach(c => {
+        ctx2d.beginPath();
+        ctx2d.arc(c.x,c.y,10,0,Math.PI*2);
+        ctx2d.fill();
+      });
+    }
+
+    function renderPlatforms(arr, color) {
+      ctx2d.fillStyle = color;
+      arr.forEach(p => {
+        ctx2d.fillRect(p.x,p.y,p.w,p.h);
+      });
+    }
+
+    function renderPlanPlatforms(arr) {
+      arr.forEach(p => {
+        const plan = PLANS.find(pl => pl.id === p.planId);
+        ctx2d.fillStyle = plan.companySponsored ? "#ffe082" : "#90caf9";
+        ctx2d.fillRect(p.x,p.y,p.w,p.h);
+        ctx2d.fillStyle = "#000";
+        ctx2d.font = "12px system-ui";
+        const label = plan.name;
+        ctx2d.fillText(label, p.x+4,p.y+18);
+        if (plan.companySponsored) {
+          ctx2d.font = "10px system-ui";
+          ctx2d.fillStyle = "#1ba672";
+          ctx2d.fillText("Company", p.x+4,p.y-4);
+        }
+      });
+    }
+
+    function renderEnemies(arr) {
+      ctx2d.fillStyle = "#8d6e63";
+      arr.forEach(e => {
+        ctx2d.fillRect(e.x,e.y,e.w,e.h);
+        ctx2d.fillStyle = "#000";
+        ctx2d.fillText("☕", e.x+6,e.y+20);
+      });
+    }
+
+    function renderDependentSlots(slots) {
+      slots.forEach(s => {
+        ctx2d.fillStyle = s.filled ? "#1ba672" : "#90caf9";
+        ctx2d.fillRect(s.x,s.y,s.w,s.h);
+        ctx2d.fillStyle = "#fff";
+        ctx2d.font = "14px system-ui";
+        ctx2d.fillText(s.filled ? "✓" : "+", s.x+s.w/2-4,s.y+20);
+        ctx2d.fillStyle = "#000";
+        ctx2d.font = "10px system-ui";
+        ctx2d.fillText(s.relationship, s.x-10,s.y-6);
+      });
+    }
+
+    function renderAddonPickups(arr) {
+      arr.forEach(p => {
+        const addon = ADDONS.find(a => a.id === p.addonId);
+        ctx2d.fillStyle = "#f48fb1";
+        ctx2d.fillRect(p.x,p.y,p.w,p.h);
+        ctx2d.fillStyle = "#000";
+        ctx2d.font = "10px system-ui";
+        const label = addon ? addon.name.split(" ")[0] : "Add";
+        ctx2d.fillText(label, p.x-4,p.y-4);
+      });
+    }
+
+    function renderFlagpole() {
+      ctx2d.fillStyle = "#b0bec5";
+      ctx2d.fillRect(880,160,8,320);
+      ctx2d.fillStyle = "#ff7a00";
+      ctx2d.fillRect(888,160,60,30);
+      ctx2d.fillStyle = "#fff";
+      ctx2d.font = "12px system-ui";
+      ctx2d.fillText("HR", 900,178);
+    }
+
+    function renderText(text,x,y) {
+      ctx2d.fillStyle = "#1a1a1a";
+      ctx2d.font = "14px system-ui";
+      ctx2d.fillText(text,x,y);
+    }
+
+    // -----------------------------
+    // INIT
+    // -----------------------------
+    function init() {
+      splashOverlay.classList.add("visible");
+      gameState.screen = Screen.SPLASH;
+      requestAnimationFrame(tick);
+    }
+
+    init();
+  </script>
+</body>
+</html>
